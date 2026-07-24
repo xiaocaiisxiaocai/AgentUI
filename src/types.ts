@@ -1,6 +1,18 @@
-export type UserRole = 'admin' | 'developer' | 'viewer';
+export type UserRole = 'admin' | 'developer' | 'operator' | 'viewer';
 export type AppLanguage = 'zh' | 'en';
 export type AppTheme = 'dark' | 'light';
+export type ViewMode = 'business' | 'expert';
+
+export type NavPageId = 
+  | 'workspace'
+  | 'agents'
+  | 'knowledge'
+  | 'tools'
+  | 'connectors'
+  | 'workflows'
+  | 'runs'
+  | 'evaluations'
+  | 'settings';
 
 export interface Attachment {
   id: string;
@@ -17,17 +29,21 @@ export interface Citation {
   excerpt: string;
   similarity: number;
   page?: number;
+  sourceType?: 'IPMS' | 'DB' | 'DOC' | 'WEB' | 'TOOL' | 'AGENT';
+  kbId?: string;
+  chunkId?: string;
 }
 
 export interface ExecutionStep {
   id: string;
   name: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'waiting_approval';
   durationMs: number;
   detail: string;
   chunks?: Citation[];
   toolInput?: Record<string, any>;
   toolOutput?: Record<string, any>;
+  agentName?: string;
 }
 
 export interface ChatMessage {
@@ -36,6 +52,7 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   executionSteps?: ExecutionStep[];
+  steps?: ExecutionStep[];
   citations?: Citation[];
   latencyMs?: number;
   tokens?: number;
@@ -43,6 +60,7 @@ export interface ChatMessage {
   attachments?: Attachment[];
   audioBase64?: string;
   isAiGenerated?: boolean;
+  approvalRequest?: ApprovalRequest;
 }
 
 export interface ChatSession {
@@ -55,19 +73,111 @@ export interface ChatSession {
   isPinned: boolean;
   tags: string[];
   model: string;
+  agentId?: string;
   messages: ChatMessage[];
+}
+
+export interface AgentDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  type: 'Internal' | 'External' | 'Supervisor' | 'Specialist' | 'Workflow' | 'HumanAssisted';
+  department: string;
+  status: 'active' | 'maintenance' | 'draft' | 'offline';
+  version: string;
+  model: string;
+  systemPrompt: string;
+  planningMode: 'auto' | 'react' | 'plan_and_execute' | 'sequential';
+  knowledgeBaseIds: string[];
+  toolIds: string[];
+  childAgentIds: string[];
+  connectorIds: string[];
+  workflowIds: string[];
+  protocolType?: 'HTTP' | 'SSE' | 'WebSocket' | 'A2A' | 'MCP' | 'OpenAI' | 'LangGraph' | 'Dify' | 'Internal';
+  endpoint?: string;
+  authType?: 'None' | 'APIKey' | 'Bearer' | 'OAuth2';
+  healthStatus?: 'Healthy' | 'Degraded' | 'Offline';
+  latencyMs?: number;
+  successRate: number;
+  totalRuns: number;
+  lastRunTime: string;
+  isExternal?: boolean;
+}
+
+export interface ToolDefinition {
+  id: string;
+  name: string;
+  type: 'Database' | 'HTTP' | 'Python' | 'SQL' | 'Browser' | 'File' | 'Email' | 'IPMS' | 'Ticket' | 'MCP' | 'Custom';
+  description: string;
+  department: string;
+  status: 'active' | 'deprecated' | 'testing';
+  inputSchema: string;
+  outputSchema: string;
+  requiresApproval: boolean;
+  avgLatencyMs: number;
+  successRate: number;
+  usageCount: number;
+  usedByAgentCount: number;
+}
+
+export interface ConnectorDefinition {
+  id: string;
+  name: string;
+  type: 'SQLServer' | 'MySQL' | 'PostgreSQL' | 'Oracle' | 'REST_API' | 'Webhook' | 'IPMS' | 'SharePoint' | 'GitHub' | 'FileShare' | 'Email' | 'OA' | 'ERP';
+  endpoint: string;
+  department: string;
+  status: 'connected' | 'disconnected' | 'error';
+  syncPolicy: 'realtime' | 'hourly' | 'daily' | 'manual';
+  lastSyncTime: string;
+  readOnly: boolean;
+}
+
+export interface KnowledgeBase {
+  id: string;
+  name: string;
+  department: string;
+  description: string;
+  sourceCount: number;
+  docCount: number;
+  chunkCount: number;
+  lastSynced: string;
+  usedByAgentsCount: number;
+  status: 'indexed' | 'syncing' | 'error';
+}
+
+export interface KnowledgeSource {
+  id: string;
+  name: string;
+  type: 'SQL Server' | 'File Upload' | 'SharePoint' | 'REST API' | 'IPMS Database';
+  department: string;
+  readOnly: boolean;
+  syncMode: 'Realtime' | 'Hourly' | 'Daily';
+  lastSync: string;
+  addedCount: number;
+  status: 'Connected' | 'Syncing' | 'Error';
 }
 
 export interface RAGDocument {
   id: string;
   title: string;
-  type: 'pdf' | 'markdown' | 'txt' | 'docx';
+  type: 'pdf' | 'markdown' | 'txt' | 'docx' | 'xlsx' | 'pptx' | 'csv' | 'image';
   size: string;
   uploadDate: string;
   chunksCount: number;
   status: 'indexed' | 'processing' | 'failed';
   category: string;
-  department: string; // 部门隔离维度，例如：售后技术部、运营助理部、通用行政部
+  department: string;
+  kbId?: string;
+  excelConfig?: {
+    sheetName: string;
+    headerRow: number;
+    primaryKey: string;
+  };
+  pdfConfig?: {
+    enableOcr: boolean;
+    extractTables: boolean;
+  };
 }
 
 export interface RAGChunk {
@@ -77,8 +187,13 @@ export interface RAGChunk {
   title: string;
   content: string;
   score: number;
+  vectorScore?: number;
+  bm25Score?: number;
+  rerankScore?: number;
   category: string;
   department: string;
+  page?: number;
+  kbId?: string;
 }
 
 export interface PromptTemplate {
@@ -105,11 +220,11 @@ export interface OpenApiEndpoint {
 
 export interface WorkflowNode {
   id: string;
-  type: 'input' | 'rag' | 'llm' | 'code' | 'filter' | 'plugin' | 'output';
+  type: 'input' | 'agent' | 'external_agent' | 'rag' | 'tool' | 'llm' | 'code' | 'condition' | 'parallel' | 'approval' | 'output' | 'filter';
   label: string;
   position: { x: number; y: number };
   config: Record<string, any>;
-  status?: 'idle' | 'running' | 'success' | 'error';
+  status?: 'idle' | 'queued' | 'running' | 'success' | 'failed' | 'waiting_approval';
 }
 
 export interface WorkflowEdge {
@@ -126,6 +241,7 @@ export interface Workflow {
   edges: WorkflowEdge[];
   lastRun?: string;
   status: 'active' | 'draft' | 'paused';
+  department?: string;
 }
 
 export interface AgentPlugin {
@@ -136,6 +252,55 @@ export interface AgentPlugin {
   enabled: boolean;
   category: 'Search' | 'Development' | 'Data' | 'Communication' | 'Location';
   config: Record<string, string>;
+}
+
+export interface RunTraceStep {
+  id: string;
+  stepName: string;
+  type: 'intent' | 'agent' | 'rag' | 'tool' | 'approval' | 'response';
+  durationMs: number;
+  status: 'success' | 'failed' | 'pending' | 'waiting_approval';
+  detail: string;
+}
+
+export interface RunRecord {
+  id: string;
+  user: string;
+  agentName: string;
+  agentId: string;
+  taskSummary: string;
+  startTime: string;
+  durationMs: number;
+  status: 'completed' | 'running' | 'failed' | 'needs_approval';
+  tokensUsed: number;
+  costUsd: number;
+  kbsUsed: string[];
+  toolsCalled: string[];
+  childAgentsCalled: string[];
+  traceSteps: RunTraceStep[];
+}
+
+export interface ApprovalRequest {
+  id: string;
+  agentId: string;
+  agentName: string;
+  actionType: string;
+  actionTitle: string;
+  description: string;
+  params: Record<string, any>;
+  riskLevel: 'low' | 'medium' | 'high';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  timestamp: string;
+}
+
+export interface EvaluationMetric {
+  id: string;
+  category: 'RAG' | 'Agent' | 'Tool';
+  metricName: string;
+  score: number;
+  target: number;
+  trend: 'up' | 'down' | 'stable';
+  description: string;
 }
 
 export interface SystemMetrics {

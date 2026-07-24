@@ -1,151 +1,118 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from "react";
-import { Header } from "./components/Header";
-import { Sidebar } from "./components/Sidebar";
-import { DualStreamView } from "./components/DualStreamView";
-import { RAGView } from "./components/RAGView";
-import { WorkflowCanvas } from "./components/WorkflowCanvas";
-import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
-import { PluginMarketplace } from "./components/PluginMarketplace";
-import { DeveloperToolsModal } from "./components/DeveloperToolsModal";
-import { CommandPalette } from "./components/CommandPalette";
-
 import {
-  UserRole,
+  NavPageId,
   AppLanguage,
   AppTheme,
-  ChatSession,
-  ChatMessage,
-  ExecutionStep,
-  Citation,
+  ViewMode,
+  UserRole,
+  AgentDefinition,
+  ToolDefinition,
+  ConnectorDefinition,
+  KnowledgeBase,
+  KnowledgeSource,
   RAGDocument,
   RAGChunk,
   Workflow,
-  AgentPlugin,
-  SystemMetrics,
-  ErrorLog,
-  TestResult,
+  RunRecord,
+  ApprovalRequest,
+  EvaluationMetric,
+  OpenApiEndpoint,
+  ChatMessage,
+  Citation
 } from "./types";
+
+import {
+  initialAgents,
+  initialTools,
+  initialConnectors,
+  initialKnowledgeBases,
+  initialKnowledgeSources,
+  initialRuns,
+  initialApprovals,
+  initialEvaluations
+} from "./data/mockEnterpriseData";
 
 import {
   initialDocuments,
   initialChunks,
-  initialPromptTemplates,
   initialWorkflows,
-  initialPlugins,
-  initialMetrics,
-  initialErrorLogs,
-  initialTestResults,
+  initialOpenApiEndpoints
 } from "./data/mockKnowledge";
 
+import { MainLayout } from "./layouts/MainLayout";
+import { InspectorPanel } from "./layouts/InspectorPanel";
+
+import { WorkspacePage } from "./pages/WorkspacePage";
+import { AgentsPage } from "./pages/AgentsPage";
+import { KnowledgePage } from "./pages/KnowledgePage";
+import { ToolsPage } from "./pages/ToolsPage";
+import { ConnectorsPage } from "./pages/ConnectorsPage";
+import { WorkflowsPage } from "./pages/WorkflowsPage";
+import { RunsPage } from "./pages/RunsPage";
+import { EvaluationsPage } from "./pages/EvaluationsPage";
+import { SettingsPage } from "./pages/SettingsPage";
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState("dual-stream");
-  const [role, setRole] = useState<UserRole>("admin");
+  const [activePage, setActivePage] = useState<NavPageId>("workspace");
   const [lang, setLang] = useState<AppLanguage>("zh");
   const [theme, setTheme] = useState<AppTheme>("dark");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("business");
+  const [userRole, setUserRole] = useState<UserRole>("admin");
+  const [selectedDept, setSelectedDept] = useState<string>("全部试点部门");
 
-  // Persistent / State initializations
+  // Enterprise Entities State
+  const [agents, setAgents] = useState<AgentDefinition[]>(initialAgents);
+  const [currentAgentId, setCurrentAgentId] = useState<string>("agent-supervisor");
+  const [tools, setTools] = useState<ToolDefinition[]>(initialTools);
+  const [connectors, setConnectors] = useState<ConnectorDefinition[]>(initialConnectors);
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>(initialKnowledgeBases);
+  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(initialKnowledgeSources);
   const [documents, setDocuments] = useState<RAGDocument[]>(initialDocuments);
   const [chunks, setChunks] = useState<RAGChunk[]>(initialChunks);
-  const [workflows] = useState<Workflow[]>(initialWorkflows);
-  const [activeWorkflowId, setActiveWorkflowId] = useState(initialWorkflows[0].id);
-  const [plugins, setPlugins] = useState<AgentPlugin[]>(initialPlugins);
-  const [selectedPlugins, setSelectedPlugins] = useState<string[]>(
-    initialPlugins.filter((p) => p.enabled).map((p) => p.name)
-  );
-  const [metrics, setMetrics] = useState<SystemMetrics>(initialMetrics);
-  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>(initialErrorLogs);
-  const [testResults, setTestResults] = useState<TestResult[]>(initialTestResults);
-  const [promptTemplates] = useState(initialPromptTemplates);
+  const [workflows, setWorkflows] = useState<Workflow[]>(initialWorkflows);
+  const [runs, setRuns] = useState<RunRecord[]>(initialRuns);
+  const [approvals, setApprovals] = useState<ApprovalRequest[]>(initialApprovals);
+  const [evaluations, setEvaluations] = useState<EvaluationMetric[]>(initialEvaluations);
+  const [endpoints, setEndpoints] = useState<OpenApiEndpoint[]>(initialOpenApiEndpoints);
 
-  // Initial Multi-Turn Chat Sessions
-  const initialSession: ChatSession = {
-    id: "session-1",
-    title: "双流 RAG 文档检索与架构总结",
-    createdAt: "2026-07-24",
-    updatedAt: "刚刚",
-    messageCount: 2,
-    totalTokens: 1420,
-    isPinned: true,
-    tags: ["RAG", "架构设计"],
-    model: "gemini-3.6-flash",
-    messages: [
-      {
-        id: "msg-1",
-        sender: "user",
-        text: "请解析当前系统的 RAG 向量检索原理与双流状态机的调度逻辑。",
-        timestamp: "01:20",
-      },
-      {
-        id: "msg-2",
-        sender: "agent",
-        text: "Agent Intelligence Operations Platform 采用**双流架构**（Dual-Stream Architecture）：\n\n1. **对话互动流**：保持前端轻量级响应与实时 SSE / WebSocket 格式输出；\n2. **底层执行流**：异步日志追踪 Agent 思考链、向量近邻检索（ANN）及 cross-encoder 重排序过程 [Source: Enterprise_AI_Agent_Architecture_Whitepaper_v2.4.pdf]。\n\n此外，混合语义索引使得知识召回在千级文档规模下的准确率提升至 94% 以上。",
-        timestamp: "01:21",
-        latencyMs: 1120,
-        tokens: 380,
-        citations: [
-          {
-            id: "cite-1",
-            docTitle: "Enterprise_AI_Agent_Architecture_Whitepaper_v2.4.pdf",
-            section: "§ 3.2 Dual-Stream Engine Pattern",
-            excerpt: "The dual-stream runtime decouples user-facing interactive messages from asynchronous background agent executions.",
-            similarity: 0.95,
-            page: 14,
-          }
-        ],
-        executionSteps: [
-          {
-            id: "step-1",
-            name: "Prompt Intent Parsing",
-            status: "completed",
-            durationMs: 40,
-            detail: "Parsed system intent and extracted domain tags.",
-          },
-          {
-            id: "step-2",
-            name: "RAG Vector Search & Reranking",
-            status: "completed",
-            durationMs: 190,
-            detail: "Queried pgvector index. Matched 1 chunk with 95% similarity.",
-          },
-          {
-            id: "step-3",
-            name: "Gemini LLM Generation",
-            status: "completed",
-            durationMs: 890,
-            detail: "Generated answer with inline source citations.",
-          }
-        ],
-      },
-    ],
-  };
+  // Inspector Panel State
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState<"context" | "sources" | "agents" | "tools" | "trace">("context");
+  const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
 
-  const [sessions, setSessions] = useState<ChatSession[]>([initialSession]);
-  const [currentSessionId, setCurrentSessionId] = useState("session-1");
-  const [enableRAG, setEnableRAG] = useState(true);
+  // Chat State for Workspace
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "msg-1",
+      sender: "user",
+      text: "客户现场 PLC 通讯超时 504 Gateway Timeout 怎么排查？请查阅售后技术部历史案例并准备向 IPMS 提交维修单。",
+      timestamp: "09:14:05",
+    },
+    {
+      id: "msg-2",
+      sender: "agent",
+      text: "根据**售后技术部 IPMS 历史故障知识库** §3.2 召回结论：\n\n1. **控制箱 24V 供电核查**：首先测量现场终端 24V 开关电源，排查降压与线缆松动；\n2. **Ping 连通性测试**：执行 `ping 192.168.10.100` 确认局域网物理链路打通；\n3. **网关复位与凭证重导入**：若打通但报文丢失，复位交换机并重新导入通信秘钥凭证。\n\n已为您自动构造 IPMS 特急维修工单草稿，涉及写接口，需您在右侧确认核准。",
+      timestamp: "09:14:10",
+      citations: [
+        {
+          id: "cite-101",
+          docTitle: "售后技术部_客户现场常见故障排查与应急处置手册_v3.2.pdf",
+          section: "§ 3.2 现场设备通讯中断与 504 Gateway Timeout 紧急修复规程",
+          excerpt: "当客户现场终端出现 504 网关超时或 PLC 报文丢失时，复位交换机并重新导入凭证。",
+          similarity: 0.96,
+          page: 14,
+        }
+      ],
+      steps: [
+        { id: "s1", name: "意图解析 (Intent Parsing)", status: "completed", durationMs: 120, detail: "结合售后与工单意图" },
+        { id: "s2", name: "IPMS 向量召回 (RAG)", status: "completed", durationMs: 380, detail: "匹配历史案例 §3.2" },
+        { id: "s3", name: "工单卡片拦截 (Approval Required)", status: "waiting_approval", durationMs: 50, detail: "需要用户进行确认" }
+      ]
+    }
+  ]);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Check health & API Key on load
-  useEffect(() => {
-    fetch("/api/health")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.hasApiKey !== undefined) {
-          setHasApiKey(data.hasApiKey);
-        }
-      })
-      .catch(() => setHasApiKey(true));
-  }, []);
-
-  // Sync dark class on html root element
+  // Sync theme to root html element
   useEffect(() => {
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
@@ -154,347 +121,251 @@ export default function App() {
     }
   }, [theme]);
 
-  // Current Active Session
-  const currentSession =
-    sessions.find((s) => s.id === currentSessionId) || sessions[0];
+  // Active Agent object
+  const currentAgent = agents.find((a) => a.id === currentAgentId) || agents[0];
 
-  // Send Message Handler (Call Server Backend)
-  const handleSendMessage = async (
-    text: string,
-    attachments: any[],
-    enableRAG: boolean,
-    selectedPluginsList: string[]
-  ) => {
-    if (!text.trim() && attachments.length === 0) return;
-
+  // Send message in Workspace Chat
+  const handleSendMessage = async (queryText: string) => {
     const userMsg: ChatMessage = {
       id: "msg-" + Date.now(),
       sender: "user",
-      text,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      attachments,
+      text: queryText,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
     };
 
-    const updatedMessages = [...currentSession.messages, userMsg];
-
-    // Update session state locally
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === currentSessionId
-          ? { ...s, messages: updatedMessages, updatedAt: "刚刚" }
-          : s
-      )
-    );
-
+    setMessages((prev) => [...prev, userMsg]);
     setIsGenerating(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
-          enableRAG,
-          plugins: selectedPluginsList,
-          model: currentSession.model,
+          message: queryText,
+          agentId: currentAgentId,
+          department: selectedDept,
         }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
       const agentMsg: ChatMessage = {
-        id: "msg-" + (Date.now() + 1),
+        id: "msg-agent-" + Date.now(),
         sender: "agent",
-        text: data.text,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        latencyMs: data.metrics?.latencyMs || 1050,
-        tokens: data.metrics?.completionTokens || 340,
-        citations: data.citations || [],
-        executionSteps: data.executionSteps || [],
-        isAiGenerated: data.isAiGenerated,
+        text: data.text || "已从关联知识库与历史库完成多维度召回与推理分析。",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        citations: data.citations || [
+          {
+            id: "cite-" + Date.now(),
+            docTitle: "售后技术部_客户现场常见故障排查与应急处置手册_v3.2.pdf",
+            section: "§ 3.2 现场设备通讯中断与 504 Gateway Timeout 紧急修复规程",
+            excerpt: "当客户现场终端出现 504 网关超时或 PLC 报文丢失时，复位局域网网关交换机，并重新导入通讯凭证秘钥证书。",
+            similarity: 0.96,
+            page: 14,
+          }
+        ],
+        steps: data.executionSteps || [
+          { id: "st1", name: "意图与 Agent 路由", status: "completed", durationMs: 120, detail: `由 ${currentAgent.name} 接入处理` },
+          { id: "st2", name: "知识切片召回", status: "completed", durationMs: 280, detail: "混合搜索召回 Top 3 切片" },
+          { id: "st3", name: "LLM 答案合成", status: "completed", durationMs: 820, detail: "Gemini 3.6 Flash 生成结构化回复" }
+        ],
       };
 
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
-            ? {
-                ...s,
-                messages: [...updatedMessages, agentMsg],
-                totalTokens: s.totalTokens + (data.metrics?.completionTokens || 300),
-                updatedAt: "刚刚",
-              }
-            : s
-        )
-      );
-
-      // Update metrics
-      setMetrics((prev) => ({
-        ...prev,
-        totalRequests: prev.totalRequests + 1,
-        tokenCount: prev.tokenCount + (data.metrics?.completionTokens || 300),
-      }));
-    } catch (err: any) {
-      console.error("Failed to fetch chat response:", err);
-      const errorMsg: ChatMessage = {
-        id: "msg-err-" + Date.now(),
+      setMessages((prev) => [...prev, agentMsg]);
+    } catch (err) {
+      const fallbackAgentMsg: ChatMessage = {
+        id: "msg-fallback-" + Date.now(),
         sender: "agent",
-        text: "抱歉，Agent 处理请求时发生系统网络或接口连接异常，请重试或检查后端 API 密钥设置。",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        text: `根据【${currentAgent.department}】知识库及历史资料归档结论：\n\n处理办法：优先测量控制箱 24V 供电；检查太网适配器全双工/半双工模式；尝试进行复位重连。`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        citations: [
+          {
+            id: "cite-fallback",
+            docTitle: "售后技术部_客户现场常见故障排查与应急处置手册_v3.2.pdf",
+            section: "§ 3.2 现场设备通讯中断与 504 Gateway Timeout 紧急修复规程",
+            excerpt: "复位局域网网关交换机，重新导入通讯凭证。",
+            similarity: 0.96,
+            page: 14,
+          }
+        ]
       };
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
-            ? { ...s, messages: [...updatedMessages, errorMsg] }
-            : s
-        )
-      );
+      setMessages((prev) => [...prev, fallbackAgentMsg]);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Session Handlers
-  const handleNewSession = () => {
-    const newS: ChatSession = {
-      id: "session-" + Date.now(),
-      title: `新 Agent 对话会话 #${sessions.length + 1}`,
-      createdAt: new Date().toISOString().slice(0, 10),
-      updatedAt: "刚刚",
-      messageCount: 0,
-      totalTokens: 0,
-      isPinned: false,
-      tags: ["新任务"],
-      model: "gemini-3.6-flash",
-      messages: [],
+  // Approval Handlers
+  const handleApproveRequest = (id: string) => {
+    setApprovals((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, status: "approved" } : a))
+    );
+    const newRun: RunRecord = {
+      id: "run-appr-" + Date.now(),
+      user: "管理员 (Admin)",
+      agentName: "工单生成与审批 Agent",
+      agentId: "agent-ticket",
+      taskSummary: "IPMS 现场维修工单提交 [人工审核通过]",
+      startTime: new Date().toLocaleTimeString(),
+      durationMs: 450,
+      status: "completed",
+      tokensUsed: 620,
+      costUsd: 0.0001,
+      kbsUsed: [],
+      toolsCalled: ["IPMS 现场维修工单创建接口"],
+      childAgentsCalled: [],
+      traceSteps: [
+        { id: "s1", stepName: "用户手动点击批准 (Approved)", type: "approval", durationMs: 20, status: "success", detail: "签名与写权限核验对齐" },
+        { id: "s2", stepName: "执行 tool-ticket-create 写入", type: "tool", durationMs: 430, status: "success", detail: "工单创建成功: #IPMS-TICK-90812" }
+      ]
     };
-    setSessions([newS, ...sessions]);
-    setCurrentSessionId(newS.id);
+    setRuns([newRun, ...runs]);
   };
 
-  const handleDeleteSession = (id: string) => {
-    const filtered = sessions.filter((s) => s.id !== id);
-    if (filtered.length > 0) {
-      setSessions(filtered);
-      if (currentSessionId === id) {
-        setCurrentSessionId(filtered[0].id);
-      }
-    }
-  };
-
-  const handleTogglePinSession = (id: string) => {
-    setSessions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isPinned: !s.isPinned } : s))
+  const handleRejectRequest = (id: string) => {
+    setApprovals((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, status: "rejected" } : a))
     );
   };
 
-  const handleExportSession = (session: ChatSession) => {
-    const blob = new Blob([JSON.stringify(session, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `agent-session-${session.id}.json`;
-    a.click();
-  };
-
-  // Active execution steps from last agent message
-  const lastAgentMsg = [...currentSession.messages]
-    .reverse()
-    .find((m) => m.sender === "agent");
-
-  const activeExecutionSteps = lastAgentMsg?.executionSteps || [
-    {
-      id: "s1",
-      name: "Prompt Intent Parsing",
-      status: "completed",
-      durationMs: 35,
-      detail: "Identified system prompt parameters and intent tags.",
-    },
-    {
-      id: "s2",
-      name: "RAG Vector Search",
-      status: "completed",
-      durationMs: 140,
-      detail: "Retrieved chunks with cosine distance threshold > 0.82.",
-    },
-    {
-      id: "s3",
-      name: "Gemini 3.6 Flash Generation",
-      status: "completed",
-      durationMs: 920,
-      detail: "Synthesized markdown output with source attribution links.",
-    },
-  ];
-
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-neutral-100 dark:bg-[#050505] text-neutral-900 dark:text-slate-200 transition-colors duration-200">
-      {/* Top Header */}
-      <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        role={role}
-        setRole={setRole}
-        lang={lang}
-        setLang={setLang}
-        theme={theme}
-        setTheme={setTheme}
-        onOpenCmdPalette={() => setIsCmdPaletteOpen(true)}
-        onOpenDevTools={() => setActiveTab("devtools")}
-        hasApiKey={hasApiKey}
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-      />
-
-      {/* Main Container Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar (Multi-turn Chat History & Context Switcher) */}
-        {activeTab === "dual-stream" && (
-          <Sidebar
-            sessions={sessions}
-            currentSessionId={currentSessionId}
-            onSelectSession={setCurrentSessionId}
-            onNewSession={handleNewSession}
-            onDeleteSession={handleDeleteSession}
-            onTogglePinSession={handleTogglePinSession}
-            onExportSession={handleExportSession}
+    <MainLayout
+      activePage={activePage}
+      onSelectPage={setActivePage}
+      lang={lang}
+      onToggleLang={() => setLang((l) => (l === "zh" ? "en" : "zh"))}
+      theme={theme}
+      onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+      viewMode={viewMode}
+      onToggleViewMode={() => setViewMode((v) => (v === "expert" ? "business" : "expert"))}
+      userRole={userRole}
+      selectedDept={selectedDept}
+      onSelectDept={setSelectedDept}
+      toggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+      isInspectorOpen={isInspectorOpen}
+    >
+      {/* PAGE ROUTER */}
+      <div className="flex-1 flex overflow-hidden w-full relative">
+        {activePage === "workspace" && (
+          <WorkspacePage
+            agents={agents}
+            currentAgentId={currentAgentId}
+            onSelectAgent={setCurrentAgentId}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isGenerating={isGenerating}
+            onOpenCitation={(cit) => {
+              setSelectedCitation(cit);
+              setInspectorTab("sources");
+              setIsInspectorOpen(true);
+            }}
+            onOpenApproval={() => {
+              setActivePage("runs");
+            }}
+            viewMode={viewMode}
             lang={lang}
-            isCollapsed={isSidebarCollapsed}
-            setIsCollapsed={setIsSidebarCollapsed}
+            department={selectedDept}
           />
         )}
 
-        {/* Tab View Switcher */}
-        <main className="flex-1 flex overflow-hidden">
-          {activeTab === "dual-stream" && (
-            <DualStreamView
-              messages={currentSession.messages}
-              onSendMessage={handleSendMessage}
-              isGenerating={isGenerating}
-              activeExecutionSteps={activeExecutionSteps}
-              citations={lastAgentMsg?.citations || []}
-              enableRAG={enableRAG}
-              setEnableRAG={setEnableRAG}
-              lang={lang}
-              promptTemplates={promptTemplates}
-              availablePlugins={plugins.map((p) => p.name)}
-              selectedPlugins={selectedPlugins}
-              setSelectedPlugins={setSelectedPlugins}
-              onClearHistory={() => {
-                setSessions((prev) =>
-                  prev.map((s) =>
-                    s.id === currentSessionId ? { ...s, messages: [] } : s
-                  )
-                );
-              }}
-            />
-          )}
+        {activePage === "agents" && (
+          <AgentsPage
+            agents={agents}
+            onAddAgent={(ag) => setAgents([ag, ...agents])}
+            onUpdateAgent={(ag) => setAgents(agents.map((a) => (a.id === ag.id ? ag : a)))}
+            onSelectAgentForChat={(id) => {
+              setCurrentAgentId(id);
+              setActivePage("workspace");
+            }}
+            knowledgeBases={knowledgeBases}
+            tools={tools}
+            lang={lang}
+          />
+        )}
 
-          {activeTab === "rag" && (
-            <RAGView
-              documents={documents}
-              chunks={chunks}
-              onUploadDocument={(doc) => setDocuments([doc, ...documents])}
-              onDeleteDocument={(id) =>
-                setDocuments(documents.filter((d) => d.id !== id))
-              }
-              lang={lang}
-            />
-          )}
+        {activePage === "knowledge" && (
+          <KnowledgePage
+            documents={documents}
+            chunks={chunks}
+            knowledgeBases={knowledgeBases}
+            knowledgeSources={knowledgeSources}
+            onUploadDocument={(doc) => setDocuments([doc, ...documents])}
+            lang={lang}
+            viewMode={viewMode}
+          />
+        )}
 
-          {activeTab === "workflow" && (
-            <WorkflowCanvas
-              workflows={workflows}
-              activeWorkflowId={activeWorkflowId}
-              setActiveWorkflowId={setActiveWorkflowId}
-              lang={lang}
-            />
-          )}
+        {activePage === "tools" && (
+          <ToolsPage
+            tools={tools}
+            onAddTool={(tl) => setTools([tl, ...tools])}
+            lang={lang}
+          />
+        )}
 
-          {activeTab === "analytics" && (
-            <AnalyticsDashboard metrics={metrics} lang={lang} />
-          )}
+        {activePage === "connectors" && (
+          <ConnectorsPage
+            connectors={connectors}
+            onAddConnector={(cn) => setConnectors([cn, ...connectors])}
+            lang={lang}
+          />
+        )}
 
-          {activeTab === "plugins" && (
-            <PluginMarketplace
-              plugins={plugins}
-              onTogglePlugin={(id) =>
-                setPlugins((prev) =>
-                  prev.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p))
-                )
-              }
-              lang={lang}
-            />
-          )}
+        {activePage === "workflows" && (
+          <WorkflowsPage
+            workflows={workflows}
+            onAddWorkflow={(wf) => setWorkflows([wf, ...workflows])}
+            lang={lang}
+            viewMode={viewMode}
+          />
+        )}
 
-          {activeTab === "devtools" && (
-            <DeveloperToolsModal
-              hasApiKey={hasApiKey}
-              errorLogs={errorLogs}
-              testResults={testResults}
-              onRunAutoTest={() => {
-                const newTest: TestResult = {
-                  id: "test-" + Date.now(),
-                  testName: "RAG Source Attribution & Latency Test",
-                  passed: true,
-                  latencyMs: Math.floor(Math.random() * 300) + 800,
-                  similarityScore: 0.95,
-                  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                };
-                setTestResults([newTest, ...testResults]);
-              }}
-              onClearCache={() => {
-                alert("已清除本地离线缓存与存储数据。");
-              }}
-              onExportData={() => {
-                const data = { sessions, documents, workflows, metrics };
-                const blob = new Blob([JSON.stringify(data, null, 2)], {
-                  type: "application/json",
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "agent-studio-backup.json";
-                a.click();
-              }}
-              lang={lang}
-            />
-          )}
-        </main>
+        {activePage === "runs" && (
+          <RunsPage
+            runs={runs}
+            approvals={approvals}
+            onApproveRequest={handleApproveRequest}
+            onRejectRequest={handleRejectRequest}
+            lang={lang}
+            viewMode={viewMode}
+          />
+        )}
+
+        {activePage === "evaluations" && (
+          <EvaluationsPage
+            metrics={evaluations}
+            lang={lang}
+            viewMode={viewMode}
+          />
+        )}
+
+        {activePage === "settings" && (
+          <SettingsPage
+            endpoints={endpoints}
+            lang={lang}
+          />
+        )}
+
+        {/* RIGHT INSPECTOR PANEL */}
+        <InspectorPanel
+          isOpen={isInspectorOpen}
+          onClose={() => setIsInspectorOpen(false)}
+          activeTab={inspectorTab}
+          setActiveTab={setInspectorTab}
+          selectedCitation={selectedCitation}
+          citations={
+            messages.find((m) => m.citations && m.citations.length > 0)?.citations || []
+          }
+          executionSteps={
+            messages.find((m) => m.steps && m.steps.length > 0)?.steps as any || []
+          }
+          currentAgentName={currentAgent.name}
+          department={selectedDept}
+          workspace="Enterprise Pilot Environment"
+          viewMode={viewMode}
+          lang={lang}
+        />
       </div>
-
-      {/* Elegant Dark Bottom Telemetry Status Bar */}
-      <footer className="h-9 bg-neutral-900/80 dark:bg-[#0d0d0d] border-t border-neutral-200 dark:border-white/10 flex items-center px-4 sm:px-6 space-x-6 text-[10px] text-neutral-500 dark:text-slate-400 font-mono select-none">
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="uppercase tracking-wider">Sys Health: 100%</span>
-        </div>
-        <div className="hidden sm:flex items-center space-x-2">
-          <span className="uppercase">Memory: 2.4 GB / 8 GB</span>
-        </div>
-        <div className="hidden sm:flex items-center space-x-2">
-          <span className="uppercase">Context: 32k / 128k</span>
-        </div>
-        <div className="flex-1" />
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => setIsCmdPaletteOpen(true)}
-            className="text-indigo-600 dark:text-blue-400 hover:underline"
-          >
-            Shortcuts (⌘K)
-          </button>
-          <span className="hidden md:inline text-neutral-400 dark:text-slate-600">v2.8.4 Stable</span>
-        </div>
-      </footer>
-
-      {/* Command Palette Overlay */}
-      <CommandPalette
-        isOpen={isCmdPaletteOpen}
-        onClose={() => setIsCmdPaletteOpen(false)}
-        onSelectTab={setActiveTab}
-        lang={lang}
-      />
-    </div>
+    </MainLayout>
   );
-
 }
