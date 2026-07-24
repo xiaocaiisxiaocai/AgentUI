@@ -1,0 +1,6 @@
+{
+  "name": "Agent Intelligence Operations Studio",
+  "description": "Enterprise-grade AI Agent platform featuring dual-stream execution, real-time RAG visual tracing with source citation, visual workflow orchestration, system observability dashboards, and developer tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
