@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Bot,
   Plus,
@@ -20,12 +20,22 @@ import { ExternalAgentWizardModal } from "../components/ExternalAgentWizardModal
 
 export const AgentsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { id: paramId } = useParams<{ id?: string }>();
   const { agents, addAgent, setCurrentAgentId } = useAppStore();
 
   const [selectedType, setSelectedType] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [showWizardModal, setShowWizardModal] = useState(false);
   const [selectedAgentForBinding, setSelectedAgentForBinding] = useState<AgentDefinition | null>(null);
+
+  useEffect(() => {
+    if (paramId) {
+      const found = agents.find((a) => a.id === paramId);
+      if (found) {
+        setSelectedAgentForBinding(found);
+      }
+    }
+  }, [paramId, agents]);
 
   const agentTypes = [
     "All",
@@ -110,15 +120,15 @@ export const AgentsPage: React.FC = () => {
       {/* Filter Tabs & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Type Pills */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto py-1 text-xs">
+        <div className="flex items-center space-x-1.5 overflow-x-auto py-1 text-xs sm:text-sm">
           {agentTypes.map((t) => (
             <button
               key={t}
               onClick={() => setSelectedType(t)}
-              className={`px-3 py-1.5 rounded-lg font-mono transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg font-mono transition-all whitespace-nowrap text-xs sm:text-sm ${
                 selectedType === t
                   ? "bg-blue-600 text-white font-bold shadow-xs"
-                  : "bg-white dark:bg-[#121215] text-slate-400 hover:text-white border border-neutral-200 dark:border-white/10"
+                  : "bg-white dark:bg-[#121215] text-neutral-600 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-white border border-neutral-200 dark:border-white/10"
               }`}
             >
               {t === "All" ? `全部 Agent (${agents.length})` : t}
@@ -128,13 +138,13 @@ export const AgentsPage: React.FC = () => {
 
         {/* Search */}
         <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-neutral-400 dark:text-slate-400" />
           <input
             type="text"
             placeholder="搜索 Agent 名称或描述..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#121215] text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+            className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#121215] text-xs sm:text-sm text-neutral-900 dark:text-slate-100 placeholder:text-neutral-400 focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>
@@ -146,7 +156,7 @@ export const AgentsPage: React.FC = () => {
             key={agent.id}
             className={`p-5 rounded-xl border bg-white dark:bg-[#0d0d10] shadow-sm flex flex-col justify-between space-y-4 transition-all hover:border-blue-500/40 relative ${
               agent.isExternal
-                ? "border-purple-500/30"
+                ? "border-purple-300 dark:border-purple-500/30"
                 : "border-neutral-200 dark:border-white/10"
             }`}
           >
@@ -154,90 +164,90 @@ export const AgentsPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2.5">
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
                       agent.isExternal
-                        ? "bg-purple-500/10 text-purple-400 border border-purple-500/30"
-                        : "bg-blue-500/10 text-blue-400 border border-blue-500/30"
+                        ? "bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30"
+                        : "bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30"
                     }`}
                   >
                     {agent.isExternal ? <Cloud className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1">
+                    <h3 className="font-bold text-xs sm:text-sm text-neutral-900 dark:text-slate-100 line-clamp-1">
                       {agent.name}
                     </h3>
-                    <div className="flex items-center space-x-1.5 text-[10px] font-mono text-slate-400 mt-0.5">
+                    <div className="flex items-center space-x-1.5 text-xs font-mono text-neutral-500 dark:text-slate-400 mt-0.5">
                       <span>{agent.department}</span>
                       <span>|</span>
-                      <span className="text-purple-400 font-bold">{agent.version}</span>
+                      <span className="text-purple-600 dark:text-purple-400 font-bold">{agent.version}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end space-y-1">
+                <div className="flex flex-col items-end space-y-1 shrink-0">
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                    className={`text-xs px-2 py-0.5 rounded-full font-mono font-bold ${
                       agent.type === "Supervisor"
-                        ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                        ? "bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30"
                         : agent.isExternal
-                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                        : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30"
+                        : "bg-blue-100 dark:bg-blue-500/10 text-blue-800 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20"
                     }`}
                   >
                     {agent.type}
                   </span>
 
                   {agent.circuitBreaker?.enabled && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center space-x-1">
-                      <ShieldAlert className="w-2.5 h-2.5" />
+                    <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 flex items-center space-x-1">
+                      <ShieldAlert className="w-3 h-3" />
                       <span>熔断保护</span>
                     </span>
                   )}
                 </div>
               </div>
 
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
+              <p className="text-xs sm:text-sm text-neutral-700 dark:text-slate-300 leading-relaxed line-clamp-2">
                 {agent.description}
               </p>
 
               {/* Resource Badges */}
-              <div className="flex flex-wrap gap-1.5 pt-1 text-[10px] font-mono">
-                <span className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-white/5 text-slate-400 flex items-center space-x-1">
-                  <Database className="w-3 h-3 text-blue-400" />
+              <div className="flex flex-wrap gap-1.5 pt-1 text-xs font-mono">
+                <span className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-slate-300 flex items-center space-x-1 border border-neutral-200 dark:border-white/5">
+                  <Database className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   <span>知识库 ({agent.knowledgeBaseIds.length})</span>
                 </span>
-                <span className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-white/5 text-slate-400 flex items-center space-x-1">
-                  <Wrench className="w-3 h-3 text-amber-400" />
+                <span className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-slate-300 flex items-center space-x-1 border border-neutral-200 dark:border-white/5">
+                  <Wrench className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                   <span>工具 ({agent.toolIds.length})</span>
                 </span>
                 {agent.childAgentIds.length > 0 && (
-                  <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 flex items-center space-x-1">
-                    <Layers className="w-3 h-3 text-purple-400" />
+                  <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-500/10 text-purple-800 dark:text-purple-300 flex items-center space-x-1 border border-purple-200 dark:border-purple-500/20">
+                    <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                     <span>子 Agent ({agent.childAgentIds.length})</span>
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between text-xs">
-              <div className="text-[10px] font-mono text-slate-400">
-                模型: <span className="text-slate-200 font-bold">{agent.model}</span>
+            <div className="pt-3 border-t border-neutral-200 dark:border-white/5 flex items-center justify-between text-xs sm:text-sm">
+              <div className="text-xs font-mono text-neutral-500 dark:text-slate-400">
+                模型: <span className="text-neutral-900 dark:text-slate-200 font-bold">{agent.model}</span>
               </div>
 
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setSelectedAgentForBinding(agent)}
-                  className="px-2.5 py-1 rounded border border-neutral-200 dark:border-white/10 text-slate-300 hover:bg-white/5 font-mono text-xs flex items-center space-x-1"
+                  className="px-2.5 py-1 rounded border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-slate-300 hover:bg-neutral-100 dark:hover:bg-white/5 font-mono text-xs sm:text-sm flex items-center space-x-1 font-semibold"
                 >
-                  <GitBranch className="w-3 h-3 text-purple-400" />
+                  <GitBranch className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   <span>绑定与版本</span>
                 </button>
                 <button
                   onClick={() => handleSelectChat(agent.id)}
-                  className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center space-x-1 shadow-xs"
+                  className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm flex items-center space-x-1 shadow-xs"
                 >
                   <span>对话</span>
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

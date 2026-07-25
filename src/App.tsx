@@ -15,6 +15,7 @@ import { EvaluationsPage } from "./pages/EvaluationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { RbacPage } from "./pages/RbacPage";
+import { ModulesPage } from "./pages/ModulesPage";
 import { Citation, ChatMessage, ApprovalRequest } from "./types";
 
 export default function App() {
@@ -189,11 +190,22 @@ export default function App() {
             }
           />
           <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/agents/:id" element={<AgentsPage />} />
+          <Route path="/agents/:id/*" element={<AgentsPage />} />
           <Route path="/knowledge" element={<KnowledgePage />} />
+          <Route path="/knowledge/:id" element={<KnowledgePage />} />
+          <Route path="/documents/:id" element={<KnowledgePage />} />
           <Route path="/tools" element={<ToolsPage />} />
+          <Route path="/tools/:id" element={<ToolsPage />} />
           <Route path="/connectors" element={<ConnectorsPage />} />
+          <Route path="/connectors/:id" element={<ConnectorsPage />} />
+          <Route path="/modules" element={<ModulesPage />} />
+          <Route path="/modules/:id" element={<ModulesPage />} />
           <Route path="/workflows" element={<WorkflowsPage />} />
+          <Route path="/workflows/:id" element={<WorkflowsPage />} />
+          <Route path="/workflows/:id/*" element={<WorkflowsPage />} />
           <Route path="/runs" element={<RunsPage />} />
+          <Route path="/runs/:id" element={<RunsPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/approvals/:id" element={<ApprovalsPage />} />
           <Route path="/evaluations" element={<EvaluationsPage />} />

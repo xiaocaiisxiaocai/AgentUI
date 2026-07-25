@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   Workflow,
   Play,
@@ -18,6 +19,7 @@ interface WorkflowsPageProps {
 }
 
 export const WorkflowsPage: React.FC<WorkflowsPageProps> = (props) => {
+  const { id: paramId } = useParams<{ id?: string }>();
   const store = useAppStore();
   const workflows = props.workflows || store.workflows;
 
@@ -29,6 +31,15 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = (props) => {
     nodes: [],
     edges: [],
   });
+
+  useEffect(() => {
+    if (paramId) {
+      const found = workflows.find((w) => w.id === paramId);
+      if (found) {
+        setSelectedWorkflow(found);
+      }
+    }
+  }, [paramId, workflows]);
   const [isRunning, setIsRunning] = useState(false);
   const [runLogs, setRunLogs] = useState<string[]>([]);
 
@@ -82,22 +93,22 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = (props) => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Workflow List */}
         <div className="space-y-3 lg:col-span-1">
-          <h3 className="font-bold text-xs font-mono text-slate-300">所有编排工作流</h3>
+          <h3 className="font-bold text-xs sm:text-sm font-mono text-neutral-600 dark:text-slate-400 uppercase tracking-wider">所有编排工作流</h3>
           {workflows.map((wf) => (
             <div
               key={wf.id}
               onClick={() => setSelectedWorkflow(wf)}
               className={`p-3.5 rounded-xl border cursor-pointer space-y-1.5 transition-all ${
                 selectedWorkflow?.id === wf.id
-                  ? "border-purple-500 bg-purple-500/10 font-bold text-purple-300"
-                  : "border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] text-slate-400 hover:border-white/20"
+                  ? "border-purple-500 bg-purple-50 dark:bg-purple-500/10 font-bold text-purple-900 dark:text-purple-300 shadow-sm"
+                  : "border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] text-neutral-700 dark:text-slate-300 hover:border-purple-300 dark:hover:border-white/20"
               }`}
             >
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-200">{wf.name}</span>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">{wf.status}</span>
+              <div className="flex items-center justify-between text-xs sm:text-sm">
+                <span className="text-neutral-900 dark:text-slate-100 font-bold">{wf.name}</span>
+                <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-bold uppercase">{wf.status}</span>
               </div>
-              <p className="text-[11px] text-slate-400 line-clamp-2">{wf.description}</p>
+              <p className="text-xs text-neutral-600 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">{wf.description}</p>
             </div>
           ))}
         </div>
@@ -105,10 +116,10 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = (props) => {
         {/* Right Canvas DAG */}
         <div className="lg:col-span-3 space-y-4">
           <div className="p-6 rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0c0c0e] shadow-xl min-h-[360px] space-y-6">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3">
               <div>
-                <h3 className="font-bold text-sm text-slate-100">{selectedWorkflow?.name}</h3>
-                <span className="text-xs text-slate-400 font-mono">DAG 节点数: {selectedWorkflow?.nodes?.length || 0}</span>
+                <h3 className="font-bold text-base sm:text-lg text-neutral-900 dark:text-slate-100">{selectedWorkflow?.name}</h3>
+                <span className="text-xs text-neutral-500 dark:text-slate-400 font-mono">DAG 节点数: {selectedWorkflow?.nodes?.length || 0}</span>
               </div>
             </div>
 
@@ -116,24 +127,24 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = (props) => {
             <div className="flex flex-wrap items-center gap-3 py-4 overflow-x-auto">
               {selectedWorkflow?.nodes?.map((node, i) => (
                 <React.Fragment key={node.id}>
-                  <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 text-slate-200 shadow-md flex items-center space-x-3 shrink-0">
-                    <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold">
+                  <div className="p-4 rounded-xl border border-purple-300 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-500/10 text-neutral-900 dark:text-slate-200 shadow-md flex items-center space-x-3 shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-600/20 border border-purple-200 dark:border-purple-500/40 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
                       {node.type === "rag" ? (
-                        <Database className="w-4 h-4 text-blue-400" />
+                        <Database className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       ) : node.type === "llm" ? (
-                        <Bot className="w-4 h-4 text-purple-400" />
+                        <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                       ) : (
-                        <Code2 className="w-4 h-4 text-amber-400" />
+                        <Code2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                       )}
                     </div>
                     <div>
-                      <span className="font-bold text-xs block text-slate-100">{node.label}</span>
-                      <span className="text-[10px] font-mono text-slate-400 uppercase">{node.type} Node</span>
+                      <span className="font-bold text-xs sm:text-sm block text-neutral-900 dark:text-slate-100">{node.label}</span>
+                      <span className="text-xs font-mono text-purple-800 dark:text-slate-400 uppercase font-semibold">{node.type} Node</span>
                     </div>
                   </div>
 
                   {i < selectedWorkflow.nodes.length - 1 && (
-                    <ArrowRight className="w-4 h-4 text-purple-400 shrink-0" />
+                    <ArrowRight className="w-5 h-5 text-purple-500 shrink-0" />
                   )}
                 </React.Fragment>
               ))}
@@ -141,8 +152,8 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = (props) => {
 
             {/* Run Logs Output */}
             {runLogs.length > 0 && (
-              <div className="p-4 rounded-xl bg-black border border-white/10 font-mono text-xs text-emerald-400 space-y-1">
-                <div className="font-bold text-slate-400 border-b border-white/10 pb-1 mb-2">执行轨迹日志 (DAG Logs):</div>
+              <div className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 font-mono text-xs sm:text-sm text-emerald-400 space-y-1.5">
+                <div className="font-bold text-slate-300 border-b border-white/10 pb-1 mb-2">执行轨迹日志 (DAG Logs):</div>
                 {runLogs.map((log, idx) => (
                   <div key={idx}>{log}</div>
                 ))}

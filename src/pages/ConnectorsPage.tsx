@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   Link2,
   Plus,
@@ -18,11 +19,19 @@ interface ConnectorsPageProps {
 }
 
 export const ConnectorsPage: React.FC<ConnectorsPageProps> = (props) => {
+  const { id: paramId } = useParams<{ id?: string }>();
   const store = useAppStore();
   const connectors = props.connectors || store.connectors;
   const onAddConnector = props.onAddConnector || store.addConnector;
 
+  const [selectedConnectorId, setSelectedConnectorId] = useState<string | null>(paramId || null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (paramId) {
+      setSelectedConnectorId(paramId);
+    }
+  }, [paramId]);
 
   const handleTriggerSync = (id: string) => {
     setSyncingId(id);
@@ -76,46 +85,46 @@ export const ConnectorsPage: React.FC<ConnectorsPageProps> = (props) => {
           >
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
-                    <Server className="w-4 h-4" />
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                    <Server className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">{conn.name}</h3>
-                    <span className="text-[10px] font-mono text-slate-400">{conn.type} | {conn.department}</span>
+                    <h3 className="font-bold text-xs sm:text-sm text-neutral-900 dark:text-slate-100">{conn.name}</h3>
+                    <span className="text-xs font-mono text-neutral-500 dark:text-slate-400">{conn.type} | {conn.department}</span>
                   </div>
                 </div>
 
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold flex items-center space-x-1">
-                  <CheckCircle2 className="w-3 h-3" />
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 text-xs font-mono font-bold flex items-center space-x-1 shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>已连接</span>
                 </span>
               </div>
 
-              <div className="p-3 rounded-lg bg-neutral-900 border border-white/5 font-mono text-xs text-blue-300 break-all">
+              <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/5 font-mono text-xs sm:text-sm text-blue-800 dark:text-blue-300 break-all font-semibold">
                 {conn.endpoint}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-400">
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono text-neutral-600 dark:text-slate-400 bg-neutral-50 dark:bg-white/5 p-2.5 rounded-lg border border-neutral-100 dark:border-transparent">
                 <div className="flex items-center space-x-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
-                  <span>策略: <strong className="text-slate-200">{conn.syncPolicy}</strong></span>
+                  <Clock className="w-3.5 h-3.5 text-neutral-500 dark:text-slate-500" />
+                  <span>策略: <strong className="text-neutral-900 dark:text-slate-200">{conn.syncPolicy}</strong></span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <Lock className="w-3.5 h-3.5 text-slate-500" />
-                  <span>权限: <strong className="text-slate-200">{conn.readOnly ? "只读 (ReadOnly)" : "读写 (ReadWrite)"}</strong></span>
+                  <Lock className="w-3.5 h-3.5 text-neutral-500 dark:text-slate-500" />
+                  <span>权限: <strong className="text-neutral-900 dark:text-slate-200">{conn.readOnly ? "只读 (ReadOnly)" : "读写 (ReadWrite)"}</strong></span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between text-xs">
-              <span className="text-[10px] font-mono text-slate-400">上次增量同步: {conn.lastSyncTime}</span>
+            <div className="pt-3 border-t border-neutral-200 dark:border-white/5 flex items-center justify-between text-xs">
+              <span className="text-xs font-mono text-neutral-500 dark:text-slate-400">上次增量同步: {conn.lastSyncTime}</span>
               <button
                 onClick={() => handleTriggerSync(conn.id)}
                 disabled={syncingId === conn.id}
-                className="px-3 py-1.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-bold font-mono text-xs border border-blue-500/30 flex items-center space-x-1.5 transition-colors"
+                className="px-3.5 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-500/10 hover:bg-blue-200 dark:hover:bg-blue-500/20 text-blue-800 dark:text-blue-300 font-bold font-mono text-xs sm:text-sm border border-blue-300 dark:border-blue-500/30 flex items-center space-x-1.5 transition-colors"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncingId === conn.id ? "animate-spin text-blue-400" : ""}`} />
+                <RefreshCw className={`w-4 h-4 ${syncingId === conn.id ? "animate-spin text-blue-600 dark:text-blue-400" : ""}`} />
                 <span>{syncingId === conn.id ? "同步中..." : "立即增量同步"}</span>
               </button>
             </div>

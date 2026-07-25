@@ -6,7 +6,8 @@ import {
   KnowledgeSource,
   RunRecord,
   EvaluationMetric,
-  ApprovalRequest
+  ApprovalRequest,
+  BuiltInModule
 } from "../types";
 
 export const initialAgents: AgentDefinition[] = [
@@ -446,4 +447,103 @@ export const initialEvaluations: EvaluationMetric[] = [
   { id: "eval-4", category: "Agent", metricName: "任务执行成功率 (Task Success Rate)", score: 98.1, target: 95.0, trend: "up", description: "Agent 完整解决用户需求的比例" },
   { id: "eval-5", category: "Agent", metricName: "工具调用准确率 (Tool Call Accuracy)", score: 99.0, target: 98.0, trend: "stable", description: "参数构造与 Schema 匹配准确度" },
   { id: "eval-6", category: "Agent", metricName: "人工审批通过率 (Approval Acceptance Rate)", score: 100.0, target: 95.0, trend: "stable", description: "提交写接口请求被用户批准的比例" },
+];
+
+export const initialModules: BuiltInModule[] = [
+  {
+    id: "mod-1",
+    name: "Intent Recognition (意图识别模组)",
+    category: "基础模组",
+    description: "多级分级意图识别，自动判断用户请求属于售后排障、数据比对还是工单操作。",
+    inputSchema: "{\n  \"text\": \"string\"\n}",
+    outputSchema: "{\n  \"intent\": \"string\",\n  \"confidence\": 0.98\n}",
+    configParams: { threshold: 0.85, defaultIntent: "general" },
+    version: "v1.2.0",
+    status: "active",
+    usedByAgents: ["主控 Agent", "售后排障 Agent"],
+    usedByWorkflows: ["售后智能分发工作流"],
+    logs: [
+      { timestamp: "09:14:05", status: "success", detail: "识别分类: 售后设备排障 (0.98)" }
+    ]
+  },
+  {
+    id: "mod-2",
+    name: "Query Rewrite & Expansion (查询改写与拓展模组)",
+    category: "RAG 模组",
+    description: "针对口语化提问生成 Synonyms 同义词拓展与 HyDE 假想文档表达，提高多角度召回率。",
+    inputSchema: "{\n  \"rawQuery\": \"string\"\n}",
+    outputSchema: "{\n  \"expandedQueries\": [\"string\"]\n}",
+    configParams: { maxExpansions: 3, enableHyDE: true },
+    version: "v2.0.1",
+    status: "active",
+    usedByAgents: ["主控 Agent", "售后排障 Agent"],
+    usedByWorkflows: ["售后智能分发工作流"],
+    logs: [
+      { timestamp: "09:14:06", status: "success", detail: "展开 3 条等价查询句" }
+    ]
+  },
+  {
+    id: "mod-3",
+    name: "Hybrid Retrieval & Rerank (混合检索与重排模组)",
+    category: "RAG 模组",
+    description: "整合 Vector (PGVector / Milvus) 与 BM25 关键词，并调用 BGE-Reranker-v2 进行二次打分。",
+    inputSchema: "{\n  \"queries\": [\"string\"],\n  \"kbIds\": [\"string\"]\n}",
+    outputSchema: "{\n  \"topChunks\": [\"ChunkObject\"]\n}",
+    configParams: { topK: 5, rerankModel: "bge-reranker-large", scoreThreshold: 0.7 },
+    version: "v3.1.0",
+    status: "active",
+    usedByAgents: ["售后排障 Agent"],
+    usedByWorkflows: ["售后智能分发工作流"],
+    logs: [
+      { timestamp: "09:14:07", status: "success", detail: "召回 5 个匹配 Chunk (最高 Score 0.96)" }
+    ]
+  },
+  {
+    id: "mod-4",
+    name: "Guardrail & Human Approval Interceptor (安全合规与审批拦截模组)",
+    category: "Agent 模组",
+    description: "监测危险 API 写指令、写数据库与敏感情境，自动打断 LLM 执行流程并提交人类审批。",
+    inputSchema: "{\n  \"toolName\": \"string\",\n  \"params\": \"object\"\n}",
+    outputSchema: "{\n  \"intercepted\": true,\n  \"approvalId\": \"appr-101\"\n}",
+    configParams: { highRiskThreshold: "Level2", requireConsent: true },
+    version: "v1.0.5",
+    status: "active",
+    usedByAgents: ["工单生成 Agent", "数据库查询 Agent"],
+    usedByWorkflows: ["售后智能分发工作流"],
+    logs: [
+      { timestamp: "09:14:10", status: "success", detail: "成功拦截写接口并提交等待审批卡片" }
+    ]
+  },
+  {
+    id: "mod-5",
+    name: "IPMS Case Retrieval (IPMS 历史案例抓取模组)",
+    category: "企业模组",
+    description: "专为 IPMS 工业管理系统定制的故障案例映射与物理现场工单数据对齐模组。",
+    inputSchema: "{\n  \"faultCode\": \"string\"\n}",
+    outputSchema: "{\n  \"cases\": [\"CaseObject\"]\n}",
+    configParams: { targetSystem: "IPMS-Prod-v4", timeoutMs: 3000 },
+    version: "v2.1.0",
+    status: "active",
+    usedByAgents: ["售后排障 Agent"],
+    usedByWorkflows: ["售后智能分发工作流"],
+    logs: [
+      { timestamp: "09:14:08", status: "success", detail: "提取 2 条相同型号历史维护案例" }
+    ]
+  },
+  {
+    id: "mod-6",
+    name: "PDF & OCR Structural Parser (文档及图表 STRUCT 解析模组)",
+    category: "数据处理模组",
+    description: "解析带复杂大表格和扫描件图片的 PDF 手册，自动输出 Markdown 并保留版面样式。",
+    inputSchema: "{\n  \"fileUrl\": \"string\"\n}",
+    outputSchema: "{\n  \"markdownText\": \"string\",\n  \"extractedTables\": []\n}",
+    configParams: { ocrEngine: "PaddleOCR", dpi: 300 },
+    version: "v1.4.2",
+    status: "active",
+    usedByAgents: [],
+    usedByWorkflows: [],
+    logs: [
+      { timestamp: "08:30:00", status: "success", detail: "解析完成 142 页 PDF 手册" }
+    ]
+  }
 ];

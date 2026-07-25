@@ -87,18 +87,18 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-neutral-50 dark:bg-[#050505]">
       {/* Top Agent Active Banner */}
-      <div className="px-4 py-2.5 border-b border-neutral-200 dark:border-white/10 bg-white dark:bg-[#09090b] flex items-center justify-between shrink-0 z-10">
-        <div className="flex items-center space-x-3">
-          <div className="relative">
+      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-neutral-200 dark:border-white/10 bg-white dark:bg-[#09090b] flex items-center justify-between shrink-0 z-10 gap-2 min-w-0">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+          <div className="relative shrink min-w-0">
             <button
               onClick={() => setShowAgentDropdown(!showAgentDropdown)}
-              className="flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-[#121215] hover:border-blue-500/40 transition-all text-xs font-bold text-slate-100"
+              className="flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-[#121215] hover:border-blue-500/40 transition-all text-xs font-bold text-slate-100 max-w-full min-w-0"
             >
-              <div className="w-5 h-5 rounded-md bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">
+              <div className="w-5 h-5 shrink-0 rounded-md bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">
                 <Bot className="w-3.5 h-3.5" />
               </div>
-              <span className="truncate max-w-[180px]">{activeAgent.name}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <span className="truncate flex-1 min-w-0 text-left text-neutral-800 dark:text-slate-100">{activeAgent.name}</span>
+              <ChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-400" />
             </button>
 
             {showAgentDropdown && (
@@ -130,24 +130,25 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
             )}
           </div>
 
-          <div className="hidden md:flex items-center space-x-2 text-[11px] font-mono text-slate-400">
-            <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">
+          <div className="hidden lg:flex items-center space-x-2 text-[11px] font-mono text-slate-400 whitespace-nowrap shrink-0">
+            <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold shrink-0">
               {activeAgent.type}
             </span>
-            <span>模型: <strong className="text-slate-200">{activeAgent.model}</strong></span>
-            <span>知识库: <strong className="text-slate-200">{activeAgent.knowledgeBaseIds.length} 个</strong></span>
-            <span>工具: <strong className="text-slate-200">{activeAgent.toolIds.length} 个</strong></span>
+            <span className="shrink-0">模型: <strong className="text-slate-200">{activeAgent.model}</strong></span>
+            <span className="shrink-0">知识库: <strong className="text-slate-200">{activeAgent.knowledgeBaseIds.length} 个</strong></span>
+            <span className="shrink-0">工具: <strong className="text-slate-200">{activeAgent.toolIds.length} 个</strong></span>
           </div>
         </div>
 
         {/* Capability Shortcuts */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 shrink-0">
           <button
             onClick={() => setShowCapabilitySelector(!showCapabilitySelector)}
-            className="px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-white/10 text-slate-300 hover:text-white hover:bg-white/5 text-xs font-mono flex items-center space-x-1"
+            className="px-2 sm:px-2.5 py-1.5 sm:py-1 rounded-lg border border-neutral-200 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 text-xs font-mono flex items-center space-x-1 whitespace-nowrap"
+            title="资源绑定选择器"
           >
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span>资源绑定选择器</span>
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 dark:text-purple-400 shrink-0" />
+            <span className="hidden sm:inline">资源绑定选择器</span>
           </button>
         </div>
       </div>

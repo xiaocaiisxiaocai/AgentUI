@@ -8,6 +8,7 @@ import { WorkflowSlice, createWorkflowSlice } from "./slices/workflowSlice";
 import { RunSlice, createRunSlice } from "./slices/runSlice";
 import { ApprovalSlice, createApprovalSlice } from "./slices/approvalSlice";
 import { RbacSlice, createRbacSlice } from "./slices/rbacSlice";
+import { ModuleSlice, createModuleSlice } from "./slices/moduleSlice";
 
 export type AppStore = UISlice &
   ChatSlice &
@@ -17,7 +18,8 @@ export type AppStore = UISlice &
   WorkflowSlice &
   RunSlice &
   ApprovalSlice &
-  RbacSlice;
+  RbacSlice &
+  ModuleSlice;
 
 export const useAppStore = create<AppStore>()((...a) => ({
   ...createUISlice(...a),
@@ -28,5 +30,6 @@ export const useAppStore = create<AppStore>()((...a) => ({
   ...createRunSlice(...a),
   ...createApprovalSlice(...a),
   ...createRbacSlice(...a),
+  ...createModuleSlice(...a),
   ...createChatSlice(...a),
 }));

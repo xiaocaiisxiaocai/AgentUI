@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { AppLanguage, AppTheme, ViewMode, UserRole, AppEnvironment, Citation } from "../../types";
+import { AppLanguage, AppTheme, ViewMode, UserRole, AppEnvironment, Citation, FontSize, SpacingMode } from "../../types";
 
 export interface UISlice {
   lang: AppLanguage;
@@ -8,6 +8,8 @@ export interface UISlice {
   userRole: UserRole;
   environment: AppEnvironment;
   selectedDept: string;
+  fontSize: FontSize;
+  spacingMode: SpacingMode;
 
   // Inspector State
   isInspectorOpen: boolean;
@@ -22,6 +24,8 @@ export interface UISlice {
   setUserRole: (role: UserRole) => void;
   setEnvironment: (env: AppEnvironment) => void;
   setSelectedDept: (dept: string) => void;
+  setFontSize: (size: FontSize) => void;
+  setSpacingMode: (mode: SpacingMode) => void;
 
   toggleInspector: () => void;
   setIsInspectorOpen: (open: boolean) => void;
@@ -37,6 +41,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   userRole: "admin",
   environment: "staging",
   selectedDept: "全部试点部门",
+  fontSize: "large",
+  spacingMode: "comfortable",
 
   isInspectorOpen: false,
   inspectorTab: "context",
@@ -56,6 +62,8 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   setUserRole: (userRole) => set({ userRole }),
   setEnvironment: (environment) => set({ environment }),
   setSelectedDept: (selectedDept) => set({ selectedDept }),
+  setFontSize: (fontSize) => set({ fontSize }),
+  setSpacingMode: (spacingMode) => set({ spacingMode }),
 
   toggleInspector: () => set((s) => ({ isInspectorOpen: !s.isInspectorOpen })),
   setIsInspectorOpen: (isInspectorOpen) => set({ isInspectorOpen }),

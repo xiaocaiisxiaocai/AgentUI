@@ -3,6 +3,8 @@ export type AppLanguage = 'zh' | 'en';
 export type AppTheme = 'dark' | 'light';
 export type ViewMode = 'business' | 'expert';
 export type AppEnvironment = 'dev' | 'staging' | 'prod';
+export type FontSize = 'normal' | 'large' | 'xlarge';
+export type SpacingMode = 'compact' | 'comfortable' | 'spacious';
 
 export interface AgentVersion {
   version: string;
@@ -196,6 +198,21 @@ export interface ToolDefinition {
   credentialId?: string;
   maskedSecret?: string;
   dataSourceType?: 'LIVE' | 'MOCK' | 'SIMULATED' | 'NOT_CONNECTED';
+}
+
+export interface BuiltInModule {
+  id: string;
+  name: string;
+  category: '基础模组' | 'RAG 模组' | 'Agent 模组' | '数据处理模组' | '企业模组';
+  description: string;
+  inputSchema: string;
+  outputSchema: string;
+  configParams: Record<string, any>;
+  version: string;
+  status: 'active' | 'deprecated' | 'testing';
+  usedByAgents: string[];
+  usedByWorkflows: string[];
+  logs?: { timestamp: string; status: 'success' | 'failed'; detail: string }[];
 }
 
 export interface ConnectorDefinition {
