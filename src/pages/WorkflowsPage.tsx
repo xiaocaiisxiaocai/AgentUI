@@ -1,31 +1,34 @@
 import React, { useState } from "react";
 import {
   Workflow,
-  Plus,
   Play,
   Bot,
   Database,
-  Wrench,
-  ShieldCheck,
   Code2,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  Layers,
   ArrowRight,
-  Sliders
 } from "lucide-react";
 import { Workflow as WorkflowType, AppLanguage, ViewMode } from "../types";
+import { useAppStore } from "../store/useAppStore";
 
 interface WorkflowsPageProps {
-  workflows: WorkflowType[];
-  onAddWorkflow: (wf: WorkflowType) => void;
-  lang: AppLanguage;
-  viewMode: ViewMode;
+  workflows?: WorkflowType[];
+  onAddWorkflow?: (wf: WorkflowType) => void;
+  lang?: AppLanguage;
+  viewMode?: ViewMode;
 }
 
-export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ workflows, onAddWorkflow }) => {
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType>(workflows[0]);
+export const WorkflowsPage: React.FC<WorkflowsPageProps> = (props) => {
+  const store = useAppStore();
+  const workflows = props.workflows || store.workflows;
+
+  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowType>(workflows[0] || {
+    id: "wf-1",
+    name: "售后智能分发工作流",
+    description: "默认工作流",
+    status: "active",
+    nodes: [],
+    edges: [],
+  });
   const [isRunning, setIsRunning] = useState(false);
   const [runLogs, setRunLogs] = useState<string[]>([]);
 
@@ -85,7 +88,7 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ workflows, onAddWo
               key={wf.id}
               onClick={() => setSelectedWorkflow(wf)}
               className={`p-3.5 rounded-xl border cursor-pointer space-y-1.5 transition-all ${
-                selectedWorkflow.id === wf.id
+                selectedWorkflow?.id === wf.id
                   ? "border-purple-500 bg-purple-500/10 font-bold text-purple-300"
                   : "border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] text-slate-400 hover:border-white/20"
               }`}
@@ -104,14 +107,14 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ workflows, onAddWo
           <div className="p-6 rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0c0c0e] shadow-xl min-h-[360px] space-y-6">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
-                <h3 className="font-bold text-sm text-slate-100">{selectedWorkflow.name}</h3>
-                <span className="text-xs text-slate-400 font-mono">DAG 节点数: {selectedWorkflow.nodes.length}</span>
+                <h3 className="font-bold text-sm text-slate-100">{selectedWorkflow?.name}</h3>
+                <span className="text-xs text-slate-400 font-mono">DAG 节点数: {selectedWorkflow?.nodes?.length || 0}</span>
               </div>
             </div>
 
             {/* DAG Nodes Flow */}
             <div className="flex flex-wrap items-center gap-3 py-4 overflow-x-auto">
-              {selectedWorkflow.nodes.map((node, i) => (
+              {selectedWorkflow?.nodes?.map((node, i) => (
                 <React.Fragment key={node.id}>
                   <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 text-slate-200 shadow-md flex items-center space-x-3 shrink-0">
                     <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold">

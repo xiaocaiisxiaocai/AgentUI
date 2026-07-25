@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useAppStore } from "./store/useAppStore";
 import { MainLayout } from "./layouts/MainLayout";
-import { InspectorPanel } from "./layouts/InspectorPanel";
+import { InspectorPanel } from "./components/InspectorPanel";
 
 import { WorkspacePage } from "./pages/WorkspacePage";
 import { AgentsPage } from "./pages/AgentsPage";
@@ -15,28 +15,18 @@ import { EvaluationsPage } from "./pages/EvaluationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { RbacPage } from "./pages/RbacPage";
-import { Citation, ChatMessage, RunRecord } from "./types";
+import { Citation, ChatMessage, ApprovalRequest } from "./types";
 
 export default function App() {
-  const location = useLocation();
+  const navigate = useNavigate();
   const {
     lang,
-    setLang,
     theme,
-    setTheme,
     viewMode,
-    setViewMode,
-    userRole,
-    setUserRole,
     selectedDept,
-    setSelectedDept,
     agents,
     currentAgentId,
     setCurrentAgentId,
-    runs,
-    approvals,
-    approveRequest,
-    rejectRequest,
   } = useAppStore();
 
   // Inspector State
@@ -110,68 +100,69 @@ export default function App() {
         }),
       });
 
+      if (!res.ok) {
+        throw new Error(`HTTP Error Status: ${res.status}`);
+      }
+
       const data = await res.json();
+
+      if (!data.text || data.text.trim() === "") {
+        const errorMsg: ChatMessage = {
+          id: "msg-err-" + Date.now(),
+          sender: "agent",
+          text: "⚠️ 接口响应异常：服务端未返回有效文本内容，无法生成知识复答。",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          citations: [],
+          steps: [
+            { id: "st-err1", name: "API 状态检测", status: "failed", durationMs: 50, detail: "data.text 为空，判定为接口异常" }
+          ]
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+        return;
+      }
 
       const agentMsg: ChatMessage = {
         id: "msg-agent-" + Date.now(),
         sender: "agent",
-        text: data.text || "已从关联知识库与历史库完成多维度召回与推理分析。",
+        text: data.text,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        citations: data.citations || [
-          {
-            id: "cite-" + Date.now(),
-            docTitle: "售后技术部_客户现场常见故障排查与应急处置手册_v3.2.pdf",
-            section: "§ 3.2 现场设备通讯中断与 504 Gateway Timeout 紧急修复规程",
-            excerpt: "当客户现场终端出现 504 网关超时或 PLC 报文丢失时，复位局域网网关交换机，并重新导入通讯凭证秘钥证书。",
-            similarity: 0.96,
-            page: 14,
-          }
-        ],
+        citations: data.citations || [],
         steps: data.executionSteps || [
           { id: "st1", name: "意图与 Agent 路由", status: "completed", durationMs: 120, detail: `由 ${currentAgent.name} 接入处理` },
-          { id: "st2", name: "知识切片召回", status: "completed", durationMs: 280, detail: "混合搜索召回 Top 3 切片" },
-          { id: "st3", name: "LLM 答案合成", status: "completed", durationMs: 820, detail: "Gemini 3.6 Flash 生成结构化回复" }
+          { id: "st2", name: "知识切片召回", status: "completed", durationMs: 280, detail: "混合搜索召回 Top Chunks" },
+          { id: "st3", name: "LLM 答案合成", status: "completed", durationMs: 820, detail: "Gemini 3.6 Flash 生成回复" }
         ],
       };
 
       setMessages((prev) => [...prev, agentMsg]);
     } catch (err) {
-      const fallbackAgentMsg: ChatMessage = {
-        id: "msg-fallback-" + Date.now(),
+      // Explicit error handling: DO NOT fake success answer or fake citations!
+      const errorAgentMsg: ChatMessage = {
+        id: "msg-error-" + Date.now(),
         sender: "agent",
-        text: `根据【${currentAgent.department}】知识库及历史资料归档结论：\n\n处理办法：优先测量控制箱 24V 供电；检查太网适配器全双工/半双工模式；尝试进行复位重连。`,
+        text: "⚠️ 服务连接失败、未完成实时检索。请检查网络网关连接或后端 API 服务状态。",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        citations: [
-          {
-            id: "cite-fallback",
-            docTitle: "售后技术部_客户现场常见故障排查与应急处置手册_v3.2.pdf",
-            section: "§ 3.2 现场设备通讯中断与 504 Gateway Timeout 紧急修复规程",
-            excerpt: "复位局域网网关交换机，重新导入通讯凭证。",
-            similarity: 0.96,
-            page: 14,
-          }
+        citations: [],
+        steps: [
+          { id: "st-err", name: "网络连接断开", status: "failed", durationMs: 0, detail: "无法完成远程 API 交互" }
         ]
       };
-      setMessages((prev) => [...prev, fallbackAgentMsg]);
+      setMessages((prev) => [...prev, errorAgentMsg]);
     } finally {
       setIsGenerating(false);
     }
   };
 
+  const handleOpenApproval = (req?: ApprovalRequest) => {
+    if (req?.id) {
+      navigate(`/approvals/${req.id}`);
+    } else {
+      navigate("/approvals");
+    }
+  };
+
   return (
-    <MainLayout
-      lang={lang}
-      onToggleLang={() => setLang(lang === "zh" ? "en" : "zh")}
-      theme={theme}
-      onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
-      viewMode={viewMode}
-      onToggleViewMode={() => setViewMode(viewMode === "expert" ? "business" : "expert")}
-      userRole={userRole}
-      selectedDept={selectedDept}
-      onSelectDept={setSelectedDept}
-      toggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
-      isInspectorOpen={isInspectorOpen}
-    >
+    <MainLayout>
       <div className="flex-1 flex overflow-hidden w-full relative">
         <Routes>
           <Route path="/" element={<Navigate to="/workspace" replace />} />
@@ -190,7 +181,7 @@ export default function App() {
                   setInspectorTab("sources");
                   setIsInspectorOpen(true);
                 }}
-                onOpenApproval={() => {}}
+                onOpenApproval={handleOpenApproval}
                 viewMode={viewMode}
                 lang={lang}
                 department={selectedDept}
@@ -204,6 +195,7 @@ export default function App() {
           <Route path="/workflows" element={<WorkflowsPage />} />
           <Route path="/runs" element={<RunsPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/approvals/:id" element={<ApprovalsPage />} />
           <Route path="/evaluations" element={<EvaluationsPage />} />
           <Route path="/rbac" element={<RbacPage />} />
           <Route path="/settings" element={<SettingsPage />} />
@@ -211,24 +203,7 @@ export default function App() {
         </Routes>
 
         {/* RIGHT INSPECTOR PANEL */}
-        <InspectorPanel
-          isOpen={isInspectorOpen}
-          onClose={() => setIsInspectorOpen(false)}
-          activeTab={inspectorTab}
-          setActiveTab={setInspectorTab}
-          selectedCitation={selectedCitation}
-          citations={
-            messages.find((m) => m.citations && m.citations.length > 0)?.citations || []
-          }
-          executionSteps={
-            messages.find((m) => m.steps && m.steps.length > 0)?.steps as any || []
-          }
-          currentAgentName={currentAgent.name}
-          department={selectedDept}
-          workspace="Enterprise Pilot Environment"
-          viewMode={viewMode}
-          lang={lang}
-        />
+        <InspectorPanel />
       </div>
     </MainLayout>
   );

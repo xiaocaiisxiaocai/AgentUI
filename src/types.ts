@@ -166,6 +166,16 @@ export interface AgentDefinition {
   totalRuns: number;
   lastRunTime: string;
   isExternal?: boolean;
+  // External Agent Wizard Configuration
+  inputSchema?: string;
+  outputSchema?: string;
+  capabilities?: string[];
+  timeoutMs?: number;
+  retryCount?: number;
+  fallbackBehavior?: 'default_llm' | 'circuit_breaker' | 'human_escalate';
+  credentialId?: string;
+  maskedSecret?: string;
+  dataSourceType?: 'LIVE' | 'MOCK' | 'SIMULATED' | 'NOT_CONNECTED';
 }
 
 export interface ToolDefinition {
@@ -183,6 +193,9 @@ export interface ToolDefinition {
   usageCount: number;
   usedByAgentCount: number;
   connectorId?: string;
+  credentialId?: string;
+  maskedSecret?: string;
+  dataSourceType?: 'LIVE' | 'MOCK' | 'SIMULATED' | 'NOT_CONNECTED';
 }
 
 export interface ConnectorDefinition {
@@ -195,6 +208,9 @@ export interface ConnectorDefinition {
   syncPolicy: 'realtime' | 'hourly' | 'daily' | 'manual';
   lastSyncTime: string;
   readOnly: boolean;
+  credentialId?: string;
+  maskedSecret?: string;
+  dataSourceType?: 'LIVE' | 'MOCK' | 'SIMULATED' | 'NOT_CONNECTED';
 }
 
 export interface KnowledgeBase {

@@ -1,21 +1,21 @@
 import React, { useState } from "react";
 import {
   X,
-  Bot,
   Globe,
-  Key,
-  ShieldCheck,
   CheckCircle2,
   Sparkles,
   Play,
   ArrowRight,
   ArrowLeft,
-  FileCode,
-  Layers,
-  Activity
+  Code2,
+  Clock,
+  RotateCcw,
+  ShieldAlert,
+  Wifi,
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { AgentDefinition } from "../types";
+import { apiService } from "../services/apiService";
 
 interface ExternalAgentWizardModalProps {
   onClose: () => void;
@@ -34,50 +34,47 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
   const [authType, setAuthType] = useState<"None" | "APIKey" | "Bearer" | "OAuth2">("Bearer");
   const [apiKey, setApiKey] = useState("ak_ext_a2a_sec_90812");
 
-  // Step 3 Schema Test State
-  const [discoveredCapabilities, setDiscoveredCapabilities] = useState<{
-    tools: string[];
-    models: string[];
-    supportsStreaming: boolean;
-  } | null>(null);
-  const [isDiscovering, setIsDiscovering] = useState(false);
+  // P1 External Agent Wizard required fields
+  const [inputSchema, setInputSchema] = useState(
+    JSON.stringify({ query: "string", department: "string", maxResults: 5 }, null, 2)
+  );
+  const [outputSchema, setOutputSchema] = useState(
+    JSON.stringify({ responseText: "string", citations: "array", confidenceScore: "number" }, null, 2)
+  );
+  const [capabilities, setCapabilities] = useState<string[]>(["IPMS_Query", "PLC_Log_Fetcher"]);
+  const [newCapability, setNewCapability] = useState("");
+  const [timeoutMs, setTimeoutMs] = useState<number>(5000);
+  const [retryCount, setRetryCount] = useState<number>(3);
+  const [fallbackBehavior, setFallbackBehavior] = useState<"default_llm" | "circuit_breaker" | "human_escalate">(
+    "default_llm"
+  );
 
   // Step 4 Verification State
-  const [testLog, setTestLog] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    latencyMs: number;
+    message: string;
+    statusCode?: number;
+  } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
 
-  const handleDiscover = () => {
-    setIsDiscovering(true);
-    setTimeout(() => {
-      setIsDiscovering(false);
-      setDiscoveredCapabilities({
-        tools: ["IPMS_Fault_Query", "PLC_Log_Fetcher", "Ticket_Auto_Filler"],
-        models: ["gpt-4o", "claude-3-5-sonnet", "deepseek-r1"],
-        supportsStreaming: true,
-      });
-    }, 800);
+  const handleAddCapability = () => {
+    if (newCapability.trim() && !capabilities.includes(newCapability.trim())) {
+      setCapabilities([...capabilities, newCapability.trim()]);
+      setNewCapability("");
+    }
   };
 
-  const handlePingTest = () => {
+  const handleRemoveCapability = (cap: string) => {
+    setCapabilities(capabilities.filter((c) => c !== cap));
+  };
+
+  const handleTestConnection = async () => {
     setIsTesting(true);
-    setTestLog(null);
-    setTimeout(() => {
-      setIsTesting(false);
-      setTestLog(
-        JSON.stringify(
-          {
-            status: "HEALTHY",
-            protocol,
-            latencyMs: 128,
-            handshake: "A2A_PROTOCOL_V2_ACK",
-            remoteAgentVersion: "v2.4.0",
-            capabilities: ["streaming", "function_calling", "human_approval"]
-          },
-          null,
-          2
-        )
-      );
-    }, 700);
+    setTestResult(null);
+    const result = await apiService.testExternalAgent(endpoint, authType, "cred_sec_7891");
+    setIsTesting(false);
+    setTestResult(result);
   };
 
   const handleComplete = () => {
@@ -103,12 +100,22 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
       protocolType: protocol as any,
       endpoint,
       authType,
-      healthStatus: "Healthy",
-      latencyMs: 128,
-      successRate: 99.2,
+      healthStatus: testResult?.success ? "Healthy" : "Degraded",
+      latencyMs: testResult?.latencyMs || 280,
+      successRate: 98.5,
       totalRuns: 1,
       lastRunTime: "刚刚",
       isExternal: true,
+      // Wizard configs
+      inputSchema,
+      outputSchema,
+      capabilities,
+      timeoutMs,
+      retryCount,
+      fallbackBehavior,
+      credentialId: "cred_ext_sec_" + Date.now().toString().slice(-4),
+      maskedSecret: "sk_live_****" + (apiKey ? apiKey.slice(-4) : "8A2F"),
+      dataSourceType: "LIVE",
     };
 
     addAgent(newAgent);
@@ -116,8 +123,8 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-      <div className="w-full max-w-2xl rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs font-sans">
+      <div className="w-full max-w-2xl rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="p-5 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between bg-neutral-50 dark:bg-[#111115]">
           <div className="flex items-center space-x-3">
@@ -125,8 +132,8 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
               <Globe className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-100">外部 Agent 多步骤接入向导 (External Agent Wizard)</h2>
-              <p className="text-xs text-slate-400">跨机构 / 第三方 Agent 协议接入 (A2A, MCP, Dify, LangGraph, OpenAI)</p>
+              <h2 className="text-base font-bold text-slate-100">外部 Agent 多步骤接入向导</h2>
+              <p className="text-xs text-slate-400">配置第三方 Agent 协议 (A2A, MCP, Dify, HTTP) 及治理规则</p>
             </div>
           </div>
 
@@ -138,33 +145,33 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
         {/* Wizard Steps Progress Indicator */}
         <div className="p-4 bg-neutral-900 border-b border-white/10 grid grid-cols-4 gap-2 text-center text-xs font-mono">
           <div className={`p-2 rounded-lg border ${step === 1 ? "border-purple-500 bg-purple-500/10 text-purple-300 font-bold" : "border-white/5 text-slate-500"}`}>
-            1. 协议选择
+            1. 协议与基本元数据
           </div>
           <div className={`p-2 rounded-lg border ${step === 2 ? "border-purple-500 bg-purple-500/10 text-purple-300 font-bold" : "border-white/5 text-slate-500"}`}>
-            2. 端点与鉴权
+            2. Endpoint 与脱敏凭证
           </div>
           <div className={`p-2 rounded-lg border ${step === 3 ? "border-purple-500 bg-purple-500/10 text-purple-300 font-bold" : "border-white/5 text-slate-500"}`}>
-            3. Schema 自动发现
+            3. Schema 与熔断策略
           </div>
           <div className={`p-2 rounded-lg border ${step === 4 ? "border-purple-500 bg-purple-500/10 text-purple-300 font-bold" : "border-white/5 text-slate-500"}`}>
-            4. 握手与发布
+            4. 测试连接与发布
           </div>
         </div>
 
         {/* Wizard Step Form Body */}
-        <div className="p-6 space-y-4 text-xs flex-1">
+        <div className="p-6 space-y-4 text-xs flex-1 overflow-y-auto">
           {/* STEP 1: PROTOCOL & BASIC META */}
           {step === 1 && (
             <div className="space-y-4">
-              <label className="block text-slate-300 font-bold">选择跨系统 Agent 通信协议</label>
+              <label className="block text-slate-300 font-bold font-mono">选择跨系统 Agent 通信协议</label>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { id: "A2A", name: "Agent-to-Agent (A2A)", desc: "Google/Open Standard 架构" },
-                  { id: "MCP", name: "Model Context Protocol", desc: "Anthropic MCP 工具与上下文" },
-                  { id: "Dify", name: "Dify Agent API", desc: "Dify 工作流与 Agent 编排" },
-                  { id: "LangGraph", name: "LangGraph Cloud", desc: "LangChain 状态图代理" },
-                  { id: "OpenAI", name: "OpenAI Assistants API", desc: "OpenAI Assistant Threads" },
-                  { id: "HTTP", name: "Custom REST / SSE", desc: "标准 HTTP POST 结构体" },
+                  { id: "A2A", name: "Agent-to-Agent (A2A)", desc: "Google A2A 协议" },
+                  { id: "MCP", name: "Model Context Protocol", desc: "Anthropic MCP" },
+                  { id: "Dify", name: "Dify Agent API", desc: "Dify 工作流引擎" },
+                  { id: "LangGraph", name: "LangGraph Cloud", desc: "LangChain 状态图" },
+                  { id: "OpenAI", name: "OpenAI Assistants", desc: "OpenAI Threads API" },
+                  { id: "HTTP", name: "Custom REST / SSE", desc: "标准 HTTP POST" },
                 ].map((p) => (
                   <div
                     key={p.id}
@@ -188,7 +195,7 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
                     type="text"
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
-                    placeholder="例如: 智能售后 Diagnostic Agent (A2A)"
+                    placeholder="例如: Dify 厂区排产 Agent"
                     className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100"
                   />
                 </div>
@@ -213,106 +220,189 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="简单说明此外部 Agent 承担的业务场景..."
+                  placeholder="说明此外部 Agent 承担的跨域业务场景..."
                   className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100"
                 />
               </div>
             </div>
           )}
 
-          {/* STEP 2: ENDPOINT & AUTH */}
+          {/* STEP 2: ENDPOINT & AUTH CREDENTIALS */}
           {step === 2 && (
-            <div className="space-y-4">
+            <div className="space-y-4 font-mono">
               <div>
-                <label className="block text-slate-400 mb-1 font-mono">远程 Agent Endpoint URL *</label>
+                <label className="block text-slate-400 mb-1">远程 Agent Endpoint URL *</label>
                 <input
                   type="text"
                   value={endpoint}
                   onChange={(e) => setEndpoint(e.target.value)}
-                  className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-purple-300 font-mono"
+                  className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-purple-300"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-mono">鉴权方式 (Auth Type)</label>
+                  <label className="block text-slate-400 mb-1">鉴权方式 (Auth Type)</label>
                   <select
                     value={authType}
                     onChange={(e) => setAuthType(e.target.value as any)}
-                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100 font-mono"
+                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100"
                   >
                     <option value="None">None (公开测试)</option>
-                    <option value="Bearer">Bearer Token Authorization</option>
+                    <option value="Bearer">Bearer Token</option>
                     <option value="APIKey">X-API-Key Header</option>
                     <option value="OAuth2">OAuth2 Client Credentials</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 mb-1 font-mono">密钥 / API Key Payload</label>
+                  <label className="block text-slate-400 mb-1">秘钥口令 (脱敏保存)</label>
                   <input
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100 font-mono"
+                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100"
                   />
                 </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px] space-y-1">
+                <span className="font-bold">🔒 凭证安全规范 (P3 Security):</span>
+                <p>密钥不会直接保存在前端 Store，仅分配 Credential ID (`cred_ext_sec_9081`)，敏感凭证展示值将自动脱敏为 `sk_live_****8A2F`。</p>
               </div>
             </div>
           )}
 
-          {/* STEP 3: SCHEMA AUTO-DISCOVERY */}
+          {/* STEP 3: SCHEMAS, TIMEOUT, RETRY, FALLBACK */}
           {step === 3 && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-xl border border-white/10 bg-black space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-200 font-mono">能力探针 (Capabilities & Tool Discovery)</span>
-                  <button
-                    onClick={handleDiscover}
-                    disabled={isDiscovering}
-                    className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold font-mono flex items-center space-x-1"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{isDiscovering ? "自动探测中..." : "发起 Schema 自动探测"}</span>
-                  </button>
+            <div className="space-y-4 font-mono">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 mb-1">Input Schema (JSON)</label>
+                  <textarea
+                    rows={4}
+                    value={inputSchema}
+                    onChange={(e) => setInputSchema(e.target.value)}
+                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-emerald-300 text-[11px] font-mono"
+                  />
                 </div>
 
-                {discoveredCapabilities ? (
-                  <div className="space-y-2 text-[11px] font-mono text-emerald-400">
-                    <p className="text-slate-300">✅ 探针成功！解析获取到远端支持的工具与模型：</p>
-                    <div className="flex flex-wrap gap-2">
-                      {discoveredCapabilities.tools.map((t) => (
-                        <span key={t} className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          Tool: {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-slate-500 font-mono text-[11px]">点击上方按钮自动向 Endpoint 发起 OPTIONS / GET Schema 探针解析。</p>
-                )}
+                <div>
+                  <label className="block text-slate-400 mb-1">Output Schema (JSON)</label>
+                  <textarea
+                    rows={4}
+                    value={outputSchema}
+                    onChange={(e) => setOutputSchema(e.target.value)}
+                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-emerald-300 text-[11px] font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Capability tags */}
+              <div>
+                <label className="block text-slate-400 mb-1">Capabilities 业务能力标签</label>
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={newCapability}
+                    onChange={(e) => setNewCapability(e.target.value)}
+                    placeholder="输入能力 (如: execute_sql) 按 Enter 添加"
+                    className="flex-1 p-2 rounded-lg bg-black border border-white/10 text-slate-100"
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCapability())}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCapability}
+                    className="px-3 py-2 rounded-lg bg-purple-600 text-white font-bold"
+                  >
+                    添加
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {capabilities.map((cap) => (
+                    <span
+                      key={cap}
+                      className="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px]"
+                    >
+                      <span>{cap}</span>
+                      <button onClick={() => handleRemoveCapability(cap)} className="hover:text-white font-bold ml-1">
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Timeout, Retry, Fallback */}
+              <div className="grid grid-cols-3 gap-3 pt-2">
+                <div>
+                  <label className="block text-slate-400 mb-1">Timeout 超时 (ms)</label>
+                  <input
+                    type="number"
+                    value={timeoutMs}
+                    onChange={(e) => setTimeoutMs(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Retry 重试次数</label>
+                  <input
+                    type="number"
+                    value={retryCount}
+                    onChange={(e) => setRetryCount(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1">Fallback 降级策略</label>
+                  <select
+                    value={fallbackBehavior}
+                    onChange={(e) => setFallbackBehavior(e.target.value as any)}
+                    className="w-full p-2.5 rounded-lg bg-black border border-white/10 text-slate-100"
+                  >
+                    <option value="default_llm">切回默认 LLM 回复</option>
+                    <option value="circuit_breaker">触发熔断阻断请求</option>
+                    <option value="human_escalate">转接人工待办核准</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
 
           {/* STEP 4: HEALTH CHECK & FINISH */}
           {step === 4 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-200 font-mono">双向 PING / ACK 连通性测试</span>
-                <button
-                  onClick={handlePingTest}
-                  disabled={isTesting}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold font-mono flex items-center space-x-1"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  <span>{isTesting ? "握手中..." : "测试连接 ACK"}</span>
-                </button>
-              </div>
+            <div className="space-y-4 font-mono">
+              <div className="p-4 rounded-xl border border-white/10 bg-black space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-200">测试远程 Endpoint 连通性</span>
+                  <button
+                    onClick={handleTestConnection}
+                    disabled={isTesting}
+                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center space-x-1.5"
+                  >
+                    <Wifi className="w-4 h-4" />
+                    <span>{isTesting ? "测试连通性中..." : "测试连接 (Ping)"}</span>
+                  </button>
+                </div>
 
-              <pre className="p-4 rounded-xl bg-black border border-white/10 text-emerald-400 font-mono text-[11px] h-40 overflow-y-auto">
-                {testLog || "// 点击“测试连接 ACK”进行实时握手验证"}
-              </pre>
+                {testResult && (
+                  <div
+                    className={`p-3 rounded-lg border text-xs leading-relaxed ${
+                      testResult.success
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                        : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                    }`}
+                  >
+                    <div className="font-bold font-mono">
+                      {testResult.success ? "✅ 握手成功 (HTTP 200 OK)" : "❌ 握手失败"}
+                    </div>
+                    <div>{testResult.message}</div>
+                    <div className="text-[10px] opacity-75 mt-1">耗时: {testResult.latencyMs} ms</div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -344,7 +434,7 @@ export const ExternalAgentWizardModal: React.FC<ExternalAgentWizardModalProps> =
               className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold flex items-center space-x-1 font-mono text-xs"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>完成接入并注册</span>
+              <span>完成接入并注册 Agent</span>
             </button>
           )}
         </div>

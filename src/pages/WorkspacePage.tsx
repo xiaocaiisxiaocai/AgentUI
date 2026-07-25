@@ -235,7 +235,29 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
                         {msg.steps.map((st) => (
                           <div key={st.id} className="flex items-center justify-between text-slate-300">
                             <span>{st.name}</span>
-                            <span className="text-emerald-400 text-[10px]">{st.status}</span>
+                            {st.status === "waiting_approval" ? (
+                              <button
+                                onClick={() =>
+                                  onOpenApproval({
+                                    id: "req-101",
+                                    agentId: activeAgent.id,
+                                    agentName: activeAgent.name,
+                                    actionType: "IPMS 写入工单",
+                                    actionTitle: "提交 IPMS 紧急维修工单",
+                                    description: "向 IPMS 系统物理写接口提交 PLC 网关复位紧急工单",
+                                    riskLevel: "high",
+                                    status: "pending",
+                                    timestamp: "09:14:10",
+                                    params: { deviceId: "PLC-504-GW", ip: "192.168.10.100" },
+                                  })
+                                }
+                                className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold hover:bg-amber-500/30 transition-colors"
+                              >
+                                ⚠️ 待审批 (点击前往)
+                              </button>
+                            ) : (
+                              <span className="text-emerald-400 text-[10px]">{st.status}</span>
+                            )}
                           </div>
                         ))}
                       </div>

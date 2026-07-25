@@ -3,24 +3,25 @@ import {
   Link2,
   Plus,
   RefreshCw,
-  Database,
   CheckCircle2,
-  AlertCircle,
   Clock,
   Lock,
   Server,
-  Building2,
-  X
 } from "lucide-react";
 import { ConnectorDefinition, AppLanguage } from "../types";
+import { useAppStore } from "../store/useAppStore";
 
 interface ConnectorsPageProps {
-  connectors: ConnectorDefinition[];
-  onAddConnector: (connector: ConnectorDefinition) => void;
-  lang: AppLanguage;
+  connectors?: ConnectorDefinition[];
+  onAddConnector?: (connector: ConnectorDefinition) => void;
+  lang?: AppLanguage;
 }
 
-export const ConnectorsPage: React.FC<ConnectorsPageProps> = ({ connectors, onAddConnector }) => {
+export const ConnectorsPage: React.FC<ConnectorsPageProps> = (props) => {
+  const store = useAppStore();
+  const connectors = props.connectors || store.connectors;
+  const onAddConnector = props.onAddConnector || store.addConnector;
+
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const handleTriggerSync = (id: string) => {

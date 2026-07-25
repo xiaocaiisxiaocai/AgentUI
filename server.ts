@@ -61,35 +61,29 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "Message is required" });
   }
 
-  // Simulated Knowledge Base Chunks for RAG Demonstration
+  // Search RAG Chunks if requested
   const mockChunks = [
     {
       id: "doc-101-c2",
-      docTitle: "AI Agent Architecture Framework Whitepaper v2.4.pdf",
-      section: "§ 3.2 Dual-Stream State Machine",
-      excerpt: "The dual-stream execution pattern separates the user conversation stream from the reactive tool orchestration stream, ensuring real-time log transparency and non-blocking streaming output.",
-      similarity: 0.94,
+      docTitle: "售后技术部_客户现场常见故障排查与应急处置手册_v3.2.pdf",
+      section: "§ 3.2 现场设备通讯中断与 504 Gateway Timeout 紧急修复规程",
+      excerpt: "当客户现场终端出现 504 网关超时或 PLC 报文丢失时，复位局域网网关交换机，并重新导入通讯凭证秘钥证书。",
+      similarity: 0.96,
       page: 14,
+      kbId: "kb-ipms-history",
+      chunkId: "doc-101-c2",
     },
-    {
-      id: "doc-102-c8",
-      docTitle: "Enterprise Vector RAG Reranking Guidelines.md",
-      section: "§ 4.1 Hybrid Semantic Search & Reciprocal Rank Fusion",
-      excerpt: "Combining dense vector embeddings with sparse BM25 indexing yields an optimal balance between exact term matching and semantic intent retrieval, achieving over 92% retrieval recall.",
-      similarity: 0.89,
-      page: 6,
-    },
-    {
-      id: "doc-103-c1",
-      docTitle: "Gemini Model Latency & Token Optimization Manual.pdf",
-      section: "§ 2.5 Dynamic Prompt Pruning",
-      excerpt: "Token budget management dynamically truncates historical chat contexts while retaining summary memories, keeping mean response latencies under 1,200 ms.",
-      similarity: 0.85,
-      page: 2,
-    }
   ];
 
-  const matchedChunks = enableRAG !== false ? mockChunks : [];
+  // Only match chunks if message query actually relates to PLC / 504 / RAG / IPMS
+  const isRagRelevant = message.toLowerCase().includes("plc") || 
+                        message.toLowerCase().includes("504") || 
+                        message.toLowerCase().includes("ipms") || 
+                        message.toLowerCase().includes("故障") ||
+                        message.toLowerCase().includes("rag") ||
+                        message.toLowerCase().includes("手册");
+
+  const matchedChunks = (enableRAG !== false && isRagRelevant) ? mockChunks : [];
 
   // Build RAG Context String
   let augmentedPrompt = message;
@@ -123,11 +117,30 @@ app.post("/api/chat", async (req, res) => {
     }
   }
 
-  // Fallback if AI call failed or no API key present
+  // Fallback behavior when Gemini API call fails or no API key configured
   if (!aiResponseText) {
-    aiResponseText = enableRAG
-      ? `根据 RAG 知识库检索（已匹配 ${matchedChunks.length} 个高相关度文档切片）：\n\n系统已分析相关技术规范。**双流执行架构**（Dual-Stream Architecture）将对话互动流与底层 Agent 运行思考流剥离 [Source: AI Agent Architecture Framework Whitepaper v2.4.pdf]。\n\n此外，通过混合语义检索（Dense Vector + BM25）与重排序算法，系统在复杂文档库中的召回率达到了 92% 以上 [Source: Enterprise Vector RAG Reranking Guidelines.md]。\n\n针对您的查询，已为您梳理以下优化建议：\n1. 启用动态 Token 剪枝，维持平均延迟在 1.2s 以内；\n2. 挂载 Web Search 及 Python Executor 插件扩展执行边界。`
-      : `已收到您的请求："${message}"。Agent 系统当前已就绪，所有流程执行节点与可视化日志已同步记录至底层控制台。您可以通过右侧“执行流”查看详细的操作链与性能损耗。`;
+    if (process.env.GEMINI_API_KEY) {
+      // API Key was provided, but model call threw an error or returned empty text
+      return res.status(502).json({
+        error: "服务连接失败、未完成实时检索。请检查 API Key 或后端网络。",
+        text: null,
+        citations: [],
+        executionSteps: [
+          {
+            id: "step-err",
+            name: "Gemini Model Gateway Error",
+            status: "failed",
+            durationMs: Date.now() - startTime,
+            detail: "Gemini API call failed or timed out.",
+          },
+        ],
+      });
+    } else {
+      // Sandbox mode without GEMINI_API_KEY
+      aiResponseText = matchedChunks.length > 0
+        ? `[SIMULATED 模态] 已检索到相关文档：《${matchedChunks[0].docTitle}》。\n\n针对："${message}"，推荐处理步骤：\n1. 检查控制柜 24V 开关电源；\n2. 确认局域网 IP 连通性并重置秘钥；\n3. 构造工单提交审批。`
+        : `[SIMULATED 模态] 收到请求："${message}"。当前未匹配到关联知识库切片。系统已记录该次 Trace 执行日志。`;
+    }
   }
 
   const elapsedMs = Date.now() - startTime;

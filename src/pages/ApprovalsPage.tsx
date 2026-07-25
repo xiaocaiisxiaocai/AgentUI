@@ -1,31 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   UserCheck,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Clock,
-  ShieldAlert,
   Search,
-  Filter,
-  FileText,
-  Building2,
   Check,
   X
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
-import { ApprovalRequest } from "../types";
 
 export const ApprovalsPage: React.FC = () => {
-  const { approvals, approveRequest, rejectRequest, viewMode } = useAppStore();
+  const { id: paramId } = useParams<{ id?: string }>();
+  const { approvals, approveRequest, rejectRequest } = useAppStore();
   const [filterRisk, setFilterRisk] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("pending");
   const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    if (paramId) {
+      setSearchQuery(paramId);
+      setFilterStatus("all");
+    }
+  }, [paramId]);
+
   const filteredApprovals = approvals.filter((app) => {
+    if (paramId && app.id === paramId) return true;
     const matchesRisk = filterRisk === "all" || app.riskLevel === filterRisk;
     const matchesStatus = filterStatus === "all" || app.status === filterStatus;
     const matchesQuery =
+      app.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.actionTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.agentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -56,7 +58,7 @@ export const ApprovalsPage: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索待办操作名称 / Agent..."
+              placeholder="搜索待办操作 ID / 名称 / Agent..."
               className="pl-8 pr-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-[#121215] text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-mono w-60"
             />
           </div>
@@ -100,7 +102,9 @@ export const ApprovalsPage: React.FC = () => {
             <div
               key={req.id}
               className={`p-5 rounded-2xl border transition-all space-y-4 shadow-sm ${
-                req.status === "pending"
+                req.id === paramId
+                  ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-500/5"
+                  : req.status === "pending"
                   ? "border-amber-500/40 bg-white dark:bg-[#0d0d10]"
                   : "border-neutral-200 dark:border-white/10 bg-white dark:bg-[#08080a] opacity-80"
               }`}
@@ -119,6 +123,7 @@ export const ApprovalsPage: React.FC = () => {
                     {req.riskLevel.toUpperCase()} RISK
                   </span>
                   <h3 className="font-bold text-sm text-slate-100">{req.actionTitle}</h3>
+                  <span className="text-[10px] font-mono text-slate-500">({req.id})</span>
                 </div>
 
                 <div className="flex items-center space-x-3 text-xs font-mono text-slate-400">

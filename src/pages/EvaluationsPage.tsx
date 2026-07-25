@@ -1,14 +1,17 @@
 import React from "react";
-import { BarChart3, TrendingUp, CheckCircle2, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { BarChart3, TrendingUp, Sparkles, Target } from "lucide-react";
 import { EvaluationMetric, AppLanguage, ViewMode } from "../types";
+import { initialEvaluations } from "../data/mockEnterpriseData";
 
 interface EvaluationsPageProps {
-  metrics: EvaluationMetric[];
-  lang: AppLanguage;
-  viewMode: ViewMode;
+  metrics?: EvaluationMetric[];
+  lang?: AppLanguage;
+  viewMode?: ViewMode;
 }
 
-export const EvaluationsPage: React.FC<EvaluationsPageProps> = ({ metrics }) => {
+export const EvaluationsPage: React.FC<EvaluationsPageProps> = (props) => {
+  const metrics = props.metrics || initialEvaluations;
+
   const ragMetrics = metrics.filter((m) => m.category === "RAG");
   const agentMetrics = metrics.filter((m) => m.category === "Agent");
 
