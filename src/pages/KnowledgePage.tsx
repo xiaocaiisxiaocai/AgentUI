@@ -4,48 +4,34 @@ import {
   FileText,
   Upload,
   Search,
-  Sliders,
   Sparkles,
-  CheckCircle2,
-  Layers,
   Building2,
   X,
   FileSpreadsheet,
   FileType,
-  Filter,
   Eye,
   RefreshCw,
   SlidersHorizontal,
-  Bot
+  Table,
+  Layers,
+  ArrowRight
 } from "lucide-react";
-import {
-  RAGDocument,
-  RAGChunk,
-  KnowledgeBase,
-  KnowledgeSource,
-  AppLanguage,
-  ViewMode
-} from "../types";
+import { useAppStore } from "../store/useAppStore";
+import { RAGDocument, RAGChunk, KnowledgeSource } from "../types";
+import { SyncJobsModal } from "../components/SyncJobsModal";
+import { DocumentChunkViewerModal } from "../components/DocumentChunkViewerModal";
 
-interface KnowledgePageProps {
-  documents: RAGDocument[];
-  chunks: RAGChunk[];
-  knowledgeBases: KnowledgeBase[];
-  knowledgeSources: KnowledgeSource[];
-  onUploadDocument: (doc: RAGDocument) => void;
-  lang: AppLanguage;
-  viewMode: ViewMode;
-}
+export const KnowledgePage: React.FC = () => {
+  const {
+    documents,
+    chunks,
+    knowledgeBases,
+    knowledgeSources,
+    addDocument,
+    selectedDept,
+    setSelectedDept
+  } = useAppStore();
 
-export const KnowledgePage: React.FC<KnowledgePageProps> = ({
-  documents,
-  chunks,
-  knowledgeBases,
-  knowledgeSources,
-  onUploadDocument,
-  viewMode,
-}) => {
-  const [selectedDept, setSelectedDept] = useState("全部");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"docs" | "kbs" | "sources" | "test">("docs");
 
@@ -57,13 +43,16 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
   // Excel Parsing Config
   const [sheetName, setSheetName] = useState("Sheet1");
   const [headerRow, setHeaderRow] = useState(1);
-  const [keepFormulas, setKeepFormulas] = useState(true);
   // PDF Config
   const [ocrEnabled, setOcrEnabled] = useState(true);
   const [chunkSize, setChunkSize] = useState(500);
 
-  // Selected Doc for Chunk Drawer
-  const [selectedDoc, setSelectedDoc] = useState<RAGDocument | null>(null);
+  // Selected Doc for Chunk Viewer Modal
+  const [selectedDocForViewer, setSelectedDocForViewer] = useState<RAGDocument | null>(null);
+
+  // Selected Source for Sync & Field Mapping Modal
+  const [selectedSourceForSync, setSelectedSourceForSync] = useState<KnowledgeSource | null>(null);
+  const [showSyncModalGlobal, setShowSyncModalGlobal] = useState(false);
 
   // Advanced Retrieval Test State
   const [testQuery, setTestQuery] = useState("客户现场 PLC 通讯超时怎么排查？");
@@ -73,10 +62,10 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
   const [testResults, setTestResults] = useState<RAGChunk[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const departments = ["全部", "售后技术部", "运营助理部", "通用行政部"];
+  const departments = ["全部试点部门", "售后技术部", "运营助理部", "通用行政部"];
 
   const filteredDocs = documents.filter((d) => {
-    const matchesDept = selectedDept === "全部" || d.department === selectedDept;
+    const matchesDept = selectedDept === "全部试点部门" || d.department === selectedDept;
     const matchesQuery =
       d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -99,7 +88,7 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
       department: docDept,
     };
 
-    onUploadDocument(newDoc);
+    addDocument(newDoc);
     setShowUploadModal(false);
     setDocTitle("");
   };
@@ -119,20 +108,20 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-slate-100 flex items-center space-x-2.5">
             <Database className="w-6 h-6 text-blue-400" />
-            <span>RAG 知识库与数据中心 (Knowledge Hub)</span>
+            <span>RAG 知识库与 4 级数据架构 (KnowledgeBase → Source → Document → Chunk)</span>
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-slate-400 mt-1">
-            部门隔离维度的向量知识库，支持历史 PDF/Word 手册解析、Excel 表格解析与混合检索（Dense + Sparse BM25 + Rerank）。
+            支持 IPMS 售后数据库字段映射、Excel/PDF 重叠切片与混合检索（Dense Vector + BM25 + Rerank）。
           </p>
         </div>
 
         <div className="flex items-center space-x-2.5">
           <button
-            onClick={() => setActiveTab("test")}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 font-bold text-xs shadow-xs transition-colors"
+            onClick={() => setShowSyncModalGlobal(true)}
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold text-xs shadow-xs transition-colors"
           >
-            <SlidersHorizontal className="w-4 h-4" />
-            <span>高级检索测试控制台</span>
+            <Table className="w-4 h-4" />
+            <span>IPMS / 数据库字段映射与同步</span>
           </button>
 
           <button
@@ -170,7 +159,7 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
               activeTab === "sources" ? "border-blue-500 text-blue-400" : "border-transparent text-slate-400 hover:text-white"
             }`}
           >
-            数据源与 Connector ({knowledgeSources.length})
+            数据源与 IPMS 数据库 ({knowledgeSources.length})
           </button>
           <button
             onClick={() => setActiveTab("test")}
@@ -246,11 +235,11 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
                   <span>切片数: <strong className="text-slate-200">{doc.chunksCount} chunks</strong></span>
                   <span>大小: {doc.size}</span>
                   <button
-                    onClick={() => setSelectedDoc(doc)}
+                    onClick={() => setSelectedDocForViewer(doc)}
                     className="px-2.5 py-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-bold flex items-center space-x-1"
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>查看 Chunk</span>
+                    <span>查看与定位 Chunk</span>
                   </button>
                 </div>
               </div>
@@ -297,7 +286,7 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
       {activeTab === "sources" && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {knowledgeSources.map((src) => (
-            <div key={src.id} className="p-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] space-y-2">
+            <div key={src.id} className="p-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-xs text-blue-400 font-mono">{src.type}</span>
                 <span className="text-[10px] text-emerald-400 font-mono font-bold">{src.status}</span>
@@ -306,6 +295,17 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
               <div className="text-[10px] font-mono text-slate-400">
                 同步频率: {src.syncMode} | 部门: {src.department}
               </div>
+
+              <button
+                onClick={() => {
+                  setSelectedSourceForSync(src);
+                  setShowSyncModalGlobal(true);
+                }}
+                className="w-full py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-mono text-xs font-bold flex items-center justify-center space-x-1"
+              >
+                <Table className="w-3.5 h-3.5" />
+                <span>映射与同步任务</span>
+              </button>
             </div>
           ))}
         </div>
@@ -406,7 +406,7 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
         </div>
       )}
 
-      {/* Upload Document Modal with Excel & PDF Specific Config */}
+      {/* Upload Document Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white dark:bg-[#121215] rounded-2xl border border-neutral-200 dark:border-white/10 p-6 max-w-xl w-full shadow-2xl space-y-4">
@@ -462,7 +462,7 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
                 </div>
               </div>
 
-              {/* Excel Specific Config */}
+              {/* Excel Config */}
               {docType === "xlsx" && (
                 <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 space-y-2">
                   <div className="font-bold text-emerald-300 flex items-center space-x-1">
@@ -492,36 +492,6 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
                 </div>
               )}
 
-              {/* PDF Specific Config */}
-              {docType === "pdf" && (
-                <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 space-y-2">
-                  <div className="font-bold text-blue-300 flex items-center space-x-1">
-                    <FileType className="w-4 h-4" />
-                    <span>PDF 扫描件 OCR & 切片重叠参数</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 font-mono">
-                    <div>
-                      <label className="block text-slate-400 text-[10px]">Chunk 大小 (Tokens)</label>
-                      <input
-                        type="number"
-                        value={chunkSize}
-                        onChange={(e) => setChunkSize(Number(e.target.value))}
-                        className="w-full p-1.5 rounded bg-black border border-white/10 text-slate-200"
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2 pt-4">
-                      <input
-                        type="checkbox"
-                        checked={ocrEnabled}
-                        onChange={(e) => setOcrEnabled(e.target.checked)}
-                        className="accent-blue-500"
-                      />
-                      <span className="text-slate-300 text-[11px]">开启 OCR 混排解析</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="flex justify-end space-x-2 pt-2 border-t border-white/10">
                 <button
                   type="button"
@@ -542,33 +512,23 @@ export const KnowledgePage: React.FC<KnowledgePageProps> = ({
         </div>
       )}
 
-      {/* Chunk Detail Drawer */}
-      {selectedDoc && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-[#121215] h-full shadow-2xl flex flex-col p-6 space-y-4 overflow-y-auto border-l border-white/10">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="font-bold text-sm text-slate-100 truncate">{selectedDoc.title}</h3>
-              <button onClick={() => setSelectedDoc(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Sync Jobs & Field Mapping Modal */}
+      {showSyncModalGlobal && (
+        <SyncJobsModal
+          source={selectedSourceForSync || undefined}
+          onClose={() => {
+            setShowSyncModalGlobal(false);
+            setSelectedSourceForSync(null);
+          }}
+        />
+      )}
 
-            <div className="text-xs text-slate-400 font-mono">
-              包含切片: {selectedDoc.chunksCount} 个 | 归属部门: {selectedDoc.department}
-            </div>
-
-            <div className="space-y-3 flex-1 overflow-y-auto">
-              {chunks
-                .filter((c) => c.docId === selectedDoc.id || true)
-                .map((chk, i) => (
-                  <div key={chk.id || i} className="p-3 rounded-lg bg-neutral-900 border border-white/10 space-y-1.5">
-                    <div className="font-bold text-xs text-blue-300">{chk.title}</div>
-                    <p className="text-xs text-slate-300 leading-relaxed font-mono">{chk.content}</p>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
+      {/* Document Chunk Viewer Modal */}
+      {selectedDocForViewer && (
+        <DocumentChunkViewerModal
+          document={selectedDocForViewer}
+          onClose={() => setSelectedDocForViewer(null)}
+        />
       )}
     </div>
   );

@@ -3,28 +3,17 @@ import {
   Wrench,
   Plus,
   Search,
-  Database,
-  Code2,
-  FileSpreadsheet,
-  Mail,
   ShieldCheck,
-  CheckCircle2,
-  Terminal,
   Play,
-  Bot,
-  Layers,
-  AlertCircle,
+  Link2,
+  CheckCircle2,
   X
 } from "lucide-react";
-import { ToolDefinition, AppLanguage } from "../types";
+import { useAppStore } from "../store/useAppStore";
+import { ToolDefinition } from "../types";
 
-interface ToolsPageProps {
-  tools: ToolDefinition[];
-  onAddTool: (tool: ToolDefinition) => void;
-  lang: AppLanguage;
-}
-
-export const ToolsPage: React.FC<ToolsPageProps> = ({ tools, onAddTool }) => {
+export const ToolsPage: React.FC = () => {
+  const { tools, connectors, addTool } = useAppStore();
   const [selectedDept, setSelectedDept] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTool, setSelectedTool] = useState<ToolDefinition | null>(null);
@@ -53,6 +42,7 @@ export const ToolsPage: React.FC<ToolsPageProps> = ({ tools, onAddTool }) => {
             status: "success",
             executionTimeMs: selectedTool.avgLatencyMs,
             toolExecuted: selectedTool.name,
+            connectorLinked: connectors.find((c) => c.id === selectedTool.connectorId)?.name || "Direct API",
             result: {
               success: true,
               data: "Tool execution sandbox returned valid structured response."
@@ -72,10 +62,10 @@ export const ToolsPage: React.FC<ToolsPageProps> = ({ tools, onAddTool }) => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-slate-100 flex items-center space-x-2.5">
             <Wrench className="w-6 h-6 text-amber-400" />
-            <span>工具中心 (Tool Center)</span>
+            <span>工具中心 (Tool Center & Connector Association)</span>
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-slate-400 mt-1">
-            独立管理 Agent 可执行的能力（SQL 查询、工单写入、Python 沙盒、MCP 硬件调控与审批规则）。
+            独立管理 Agent 可执行的能力（SQL 查询、工单写入、Python 沙盒、MCP 硬件调控）并建立与底座 Connector 的关联。
           </p>
         </div>
 
@@ -91,12 +81,13 @@ export const ToolsPage: React.FC<ToolsPageProps> = ({ tools, onAddTool }) => {
               inputSchema: "{\n  \"payload\": \"object\"\n}",
               outputSchema: "{\n  \"received\": \"boolean\"\n}",
               requiresApproval: false,
+              connectorId: "conn-ipms-rest",
               avgLatencyMs: 120,
               successRate: 100,
               usageCount: 0,
               usedByAgentCount: 1,
             };
-            onAddTool(newTool);
+            addTool(newTool);
           }}
           className="flex items-center space-x-1.5 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all"
         >
@@ -137,65 +128,79 @@ export const ToolsPage: React.FC<ToolsPageProps> = ({ tools, onAddTool }) => {
 
       {/* Tools Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredTools.map((tool) => (
-          <div
-            key={tool.id}
-            className="p-5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] shadow-sm flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-all"
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono font-bold text-xs">
-                  {tool.type}
-                </span>
-                {tool.requiresApproval && (
-                  <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-mono text-[10px] font-bold flex items-center space-x-1">
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>需人工确认</span>
+        {filteredTools.map((tool) => {
+          const linkedConnector = connectors.find((c) => c.id === tool.connectorId);
+          return (
+            <div
+              key={tool.id}
+              className="p-5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] shadow-sm flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-all"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono font-bold text-xs">
+                    {tool.type}
                   </span>
+                  {tool.requiresApproval && (
+                    <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-mono text-[10px] font-bold flex items-center space-x-1">
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>需人工确认</span>
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">{tool.name}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">
+                    {tool.description}
+                  </p>
+                </div>
+
+                {/* Visible Link to Connector */}
+                {linkedConnector && (
+                  <div className="p-2 rounded bg-neutral-900 border border-white/10 text-[10px] font-mono flex items-center justify-between">
+                    <span className="text-slate-400 flex items-center space-x-1">
+                      <Link2 className="w-3 h-3 text-emerald-400" />
+                      <span>绑定底层 Connector:</span>
+                    </span>
+                    <span className="font-bold text-emerald-300 truncate max-w-[140px]">{linkedConnector.name}</span>
+                  </div>
                 )}
+
+                <div className="pt-2 grid grid-cols-2 gap-2 font-mono text-[11px] text-slate-400 bg-neutral-50 dark:bg-white/5 p-2.5 rounded-lg">
+                  <div>
+                    延迟: <span className="text-slate-200 font-bold">{tool.avgLatencyMs} ms</span>
+                  </div>
+                  <div>
+                    成功率: <span className="text-emerald-400 font-bold">{tool.successRate}%</span>
+                  </div>
+                  <div>
+                    绑定 Agent: <span className="text-blue-400 font-bold">{tool.usedByAgentCount} 个</span>
+                  </div>
+                  <div>
+                    调用次数: <span className="text-slate-200 font-bold">{tool.usageCount}</span>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">{tool.name}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">
-                  {tool.description}
-                </p>
-              </div>
-
-              <div className="pt-2 grid grid-cols-2 gap-2 font-mono text-[11px] text-slate-400 bg-neutral-50 dark:bg-white/5 p-2.5 rounded-lg">
-                <div>
-                  延迟: <span className="text-slate-200 font-bold">{tool.avgLatencyMs} ms</span>
-                </div>
-                <div>
-                  成功率: <span className="text-emerald-400 font-bold">{tool.successRate}%</span>
-                </div>
-                <div>
-                  绑定 Agent: <span className="text-blue-400 font-bold">{tool.usedByAgentCount} 个</span>
-                </div>
-                <div>
-                  调用次数: <span className="text-slate-200 font-bold">{tool.usageCount}</span>
-                </div>
+              <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
+                <span className="text-[10px] font-mono text-slate-400">所属: {tool.department}</span>
+                <button
+                  onClick={() => {
+                    setSelectedTool(tool);
+                    setTestInput(tool.inputSchema);
+                    setTestOutput(null);
+                  }}
+                  className="px-3 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold font-mono text-xs border border-amber-500/30 transition-colors"
+                >
+                  测试 Schema & 验证
+                </button>
               </div>
             </div>
-
-            <div className="pt-3 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
-              <span className="text-[10px] font-mono text-slate-400">所属: {tool.department}</span>
-              <button
-                onClick={() => {
-                  setSelectedTool(tool);
-                  setTestInput(tool.inputSchema);
-                  setTestOutput(null);
-                }}
-                className="px-3 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold font-mono text-xs border border-amber-500/30 transition-colors"
-              >
-                测试 Schema & 验证
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Tool Test Modal / Drawer */}
+      {/* Tool Test Modal */}
       {selectedTool && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white dark:bg-[#121215] rounded-2xl border border-neutral-200 dark:border-white/10 p-6 max-w-xl w-full shadow-2xl space-y-4">

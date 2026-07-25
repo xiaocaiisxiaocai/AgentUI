@@ -1,44 +1,6 @@
-import React, { useState, useEffect } from "react";
-import {
-  NavPageId,
-  AppLanguage,
-  AppTheme,
-  ViewMode,
-  UserRole,
-  AgentDefinition,
-  ToolDefinition,
-  ConnectorDefinition,
-  KnowledgeBase,
-  KnowledgeSource,
-  RAGDocument,
-  RAGChunk,
-  Workflow,
-  RunRecord,
-  ApprovalRequest,
-  EvaluationMetric,
-  OpenApiEndpoint,
-  ChatMessage,
-  Citation
-} from "./types";
-
-import {
-  initialAgents,
-  initialTools,
-  initialConnectors,
-  initialKnowledgeBases,
-  initialKnowledgeSources,
-  initialRuns,
-  initialApprovals,
-  initialEvaluations
-} from "./data/mockEnterpriseData";
-
-import {
-  initialDocuments,
-  initialChunks,
-  initialWorkflows,
-  initialOpenApiEndpoints
-} from "./data/mockKnowledge";
-
+import React, { useEffect, useState } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useAppStore } from "./store/useAppStore";
 import { MainLayout } from "./layouts/MainLayout";
 import { InspectorPanel } from "./layouts/InspectorPanel";
 
@@ -51,31 +13,33 @@ import { WorkflowsPage } from "./pages/WorkflowsPage";
 import { RunsPage } from "./pages/RunsPage";
 import { EvaluationsPage } from "./pages/EvaluationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ApprovalsPage } from "./pages/ApprovalsPage";
+import { RbacPage } from "./pages/RbacPage";
+import { Citation, ChatMessage, RunRecord } from "./types";
 
 export default function App() {
-  const [activePage, setActivePage] = useState<NavPageId>("workspace");
-  const [lang, setLang] = useState<AppLanguage>("zh");
-  const [theme, setTheme] = useState<AppTheme>("dark");
-  const [viewMode, setViewMode] = useState<ViewMode>("business");
-  const [userRole, setUserRole] = useState<UserRole>("admin");
-  const [selectedDept, setSelectedDept] = useState<string>("全部试点部门");
+  const location = useLocation();
+  const {
+    lang,
+    setLang,
+    theme,
+    setTheme,
+    viewMode,
+    setViewMode,
+    userRole,
+    setUserRole,
+    selectedDept,
+    setSelectedDept,
+    agents,
+    currentAgentId,
+    setCurrentAgentId,
+    runs,
+    approvals,
+    approveRequest,
+    rejectRequest,
+  } = useAppStore();
 
-  // Enterprise Entities State
-  const [agents, setAgents] = useState<AgentDefinition[]>(initialAgents);
-  const [currentAgentId, setCurrentAgentId] = useState<string>("agent-supervisor");
-  const [tools, setTools] = useState<ToolDefinition[]>(initialTools);
-  const [connectors, setConnectors] = useState<ConnectorDefinition[]>(initialConnectors);
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>(initialKnowledgeBases);
-  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(initialKnowledgeSources);
-  const [documents, setDocuments] = useState<RAGDocument[]>(initialDocuments);
-  const [chunks, setChunks] = useState<RAGChunk[]>(initialChunks);
-  const [workflows, setWorkflows] = useState<Workflow[]>(initialWorkflows);
-  const [runs, setRuns] = useState<RunRecord[]>(initialRuns);
-  const [approvals, setApprovals] = useState<ApprovalRequest[]>(initialApprovals);
-  const [evaluations, setEvaluations] = useState<EvaluationMetric[]>(initialEvaluations);
-  const [endpoints, setEndpoints] = useState<OpenApiEndpoint[]>(initialOpenApiEndpoints);
-
-  // Inspector Panel State
+  // Inspector State
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [inspectorTab, setInspectorTab] = useState<"context" | "sources" | "agents" | "tools" | "trace">("context");
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
@@ -121,7 +85,6 @@ export default function App() {
     }
   }, [theme]);
 
-  // Active Agent object
   const currentAgent = agents.find((a) => a.id === currentAgentId) || agents[0];
 
   // Send message in Workspace Chat
@@ -195,156 +158,57 @@ export default function App() {
     }
   };
 
-  // Approval Handlers
-  const handleApproveRequest = (id: string) => {
-    setApprovals((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "approved" } : a))
-    );
-    const newRun: RunRecord = {
-      id: "run-appr-" + Date.now(),
-      user: "管理员 (Admin)",
-      agentName: "工单生成与审批 Agent",
-      agentId: "agent-ticket",
-      taskSummary: "IPMS 现场维修工单提交 [人工审核通过]",
-      startTime: new Date().toLocaleTimeString(),
-      durationMs: 450,
-      status: "completed",
-      tokensUsed: 620,
-      costUsd: 0.0001,
-      kbsUsed: [],
-      toolsCalled: ["IPMS 现场维修工单创建接口"],
-      childAgentsCalled: [],
-      traceSteps: [
-        { id: "s1", stepName: "用户手动点击批准 (Approved)", type: "approval", durationMs: 20, status: "success", detail: "签名与写权限核验对齐" },
-        { id: "s2", stepName: "执行 tool-ticket-create 写入", type: "tool", durationMs: 430, status: "success", detail: "工单创建成功: #IPMS-TICK-90812" }
-      ]
-    };
-    setRuns([newRun, ...runs]);
-  };
-
-  const handleRejectRequest = (id: string) => {
-    setApprovals((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "rejected" } : a))
-    );
-  };
-
   return (
     <MainLayout
-      activePage={activePage}
-      onSelectPage={setActivePage}
       lang={lang}
-      onToggleLang={() => setLang((l) => (l === "zh" ? "en" : "zh"))}
+      onToggleLang={() => setLang(lang === "zh" ? "en" : "zh")}
       theme={theme}
-      onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+      onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
       viewMode={viewMode}
-      onToggleViewMode={() => setViewMode((v) => (v === "expert" ? "business" : "expert"))}
+      onToggleViewMode={() => setViewMode(viewMode === "expert" ? "business" : "expert")}
       userRole={userRole}
       selectedDept={selectedDept}
       onSelectDept={setSelectedDept}
       toggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
       isInspectorOpen={isInspectorOpen}
     >
-      {/* PAGE ROUTER */}
       <div className="flex-1 flex overflow-hidden w-full relative">
-        {activePage === "workspace" && (
-          <WorkspacePage
-            agents={agents}
-            currentAgentId={currentAgentId}
-            onSelectAgent={setCurrentAgentId}
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            isGenerating={isGenerating}
-            onOpenCitation={(cit) => {
-              setSelectedCitation(cit);
-              setInspectorTab("sources");
-              setIsInspectorOpen(true);
-            }}
-            onOpenApproval={() => {
-              setActivePage("runs");
-            }}
-            viewMode={viewMode}
-            lang={lang}
-            department={selectedDept}
+        <Routes>
+          <Route path="/" element={<Navigate to="/workspace" replace />} />
+          <Route
+            path="/workspace"
+            element={
+              <WorkspacePage
+                agents={agents}
+                currentAgentId={currentAgentId}
+                onSelectAgent={setCurrentAgentId}
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isGenerating={isGenerating}
+                onOpenCitation={(cit) => {
+                  setSelectedCitation(cit);
+                  setInspectorTab("sources");
+                  setIsInspectorOpen(true);
+                }}
+                onOpenApproval={() => {}}
+                viewMode={viewMode}
+                lang={lang}
+                department={selectedDept}
+              />
+            }
           />
-        )}
-
-        {activePage === "agents" && (
-          <AgentsPage
-            agents={agents}
-            onAddAgent={(ag) => setAgents([ag, ...agents])}
-            onUpdateAgent={(ag) => setAgents(agents.map((a) => (a.id === ag.id ? ag : a)))}
-            onSelectAgentForChat={(id) => {
-              setCurrentAgentId(id);
-              setActivePage("workspace");
-            }}
-            knowledgeBases={knowledgeBases}
-            tools={tools}
-            lang={lang}
-          />
-        )}
-
-        {activePage === "knowledge" && (
-          <KnowledgePage
-            documents={documents}
-            chunks={chunks}
-            knowledgeBases={knowledgeBases}
-            knowledgeSources={knowledgeSources}
-            onUploadDocument={(doc) => setDocuments([doc, ...documents])}
-            lang={lang}
-            viewMode={viewMode}
-          />
-        )}
-
-        {activePage === "tools" && (
-          <ToolsPage
-            tools={tools}
-            onAddTool={(tl) => setTools([tl, ...tools])}
-            lang={lang}
-          />
-        )}
-
-        {activePage === "connectors" && (
-          <ConnectorsPage
-            connectors={connectors}
-            onAddConnector={(cn) => setConnectors([cn, ...connectors])}
-            lang={lang}
-          />
-        )}
-
-        {activePage === "workflows" && (
-          <WorkflowsPage
-            workflows={workflows}
-            onAddWorkflow={(wf) => setWorkflows([wf, ...workflows])}
-            lang={lang}
-            viewMode={viewMode}
-          />
-        )}
-
-        {activePage === "runs" && (
-          <RunsPage
-            runs={runs}
-            approvals={approvals}
-            onApproveRequest={handleApproveRequest}
-            onRejectRequest={handleRejectRequest}
-            lang={lang}
-            viewMode={viewMode}
-          />
-        )}
-
-        {activePage === "evaluations" && (
-          <EvaluationsPage
-            metrics={evaluations}
-            lang={lang}
-            viewMode={viewMode}
-          />
-        )}
-
-        {activePage === "settings" && (
-          <SettingsPage
-            endpoints={endpoints}
-            lang={lang}
-          />
-        )}
+          <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/knowledge" element={<KnowledgePage />} />
+          <Route path="/tools" element={<ToolsPage />} />
+          <Route path="/connectors" element={<ConnectorsPage />} />
+          <Route path="/workflows" element={<WorkflowsPage />} />
+          <Route path="/runs" element={<RunsPage />} />
+          <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/evaluations" element={<EvaluationsPage />} />
+          <Route path="/rbac" element={<RbacPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/workspace" replace />} />
+        </Routes>
 
         {/* RIGHT INSPECTOR PANEL */}
         <InspectorPanel

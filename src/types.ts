@@ -2,6 +2,67 @@ export type UserRole = 'admin' | 'developer' | 'operator' | 'viewer';
 export type AppLanguage = 'zh' | 'en';
 export type AppTheme = 'dark' | 'light';
 export type ViewMode = 'business' | 'expert';
+export type AppEnvironment = 'dev' | 'staging' | 'prod';
+
+export interface AgentVersion {
+  version: string;
+  releaseStatus: 'draft' | 'staging' | 'production' | 'deprecated';
+  changelog: string;
+  author: string;
+  createdAt: string;
+}
+
+export interface CircuitBreakerConfig {
+  enabled: boolean;
+  failureThreshold: number; // e.g. 3 consecutive failures
+  resetTimeoutSec: number;  // e.g. 60 seconds
+  fallbackAgentId?: string;
+  fallbackMessage?: string;
+}
+
+export interface SyncJob {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  status: 'running' | 'completed' | 'failed';
+  totalDocs: number;
+  syncedDocs: number;
+  failedDocs: number;
+  errorMessage?: string;
+  timestamp: string;
+}
+
+export interface FieldMapping {
+  sourceField: string;
+  targetField: string;
+  dataType: 'string' | 'number' | 'date' | 'boolean' | 'json';
+  transform?: string;
+  isPrimaryKey?: boolean;
+}
+
+export interface EvalDataset {
+  id: string;
+  name: string;
+  description: string;
+  category: 'RAG' | 'Agent' | 'Tool' | 'EndToEnd';
+  sampleCount: number;
+  lastRunScore: number;
+  updatedAt: string;
+}
+
+export interface RbacRole {
+  id: UserRole;
+  name: string;
+  description: string;
+  permissions: {
+    agents: ('view' | 'create' | 'edit' | 'delete' | 'publish')[];
+    knowledge: ('view' | 'upload' | 'sync' | 'delete')[];
+    tools: ('view' | 'execute' | 'configure')[];
+    workflows: ('view' | 'edit' | 'execute')[];
+    approvals: ('view' | 'approve')[];
+    settings: ('view' | 'configure')[];
+  };
+}
 
 export type NavPageId = 
   | 'workspace'
@@ -86,6 +147,8 @@ export interface AgentDefinition {
   department: string;
   status: 'active' | 'maintenance' | 'draft' | 'offline';
   version: string;
+  versions?: AgentVersion[];
+  circuitBreaker?: CircuitBreakerConfig;
   model: string;
   systemPrompt: string;
   planningMode: 'auto' | 'react' | 'plan_and_execute' | 'sequential';
@@ -119,6 +182,7 @@ export interface ToolDefinition {
   successRate: number;
   usageCount: number;
   usedByAgentCount: number;
+  connectorId?: string;
 }
 
 export interface ConnectorDefinition {
@@ -148,6 +212,7 @@ export interface KnowledgeBase {
 
 export interface KnowledgeSource {
   id: string;
+  kbId?: string;
   name: string;
   type: 'SQL Server' | 'File Upload' | 'SharePoint' | 'REST API' | 'IPMS Database';
   department: string;
@@ -156,6 +221,7 @@ export interface KnowledgeSource {
   lastSync: string;
   addedCount: number;
   status: 'Connected' | 'Syncing' | 'Error';
+  fieldMappings?: FieldMapping[];
 }
 
 export interface RAGDocument {

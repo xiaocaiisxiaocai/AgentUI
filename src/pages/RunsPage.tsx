@@ -3,7 +3,6 @@ import {
   Activity,
   CheckCircle2,
   Clock,
-  Coins,
   ShieldAlert,
   Search,
   Check,
@@ -12,30 +11,26 @@ import {
   Bot,
   Database,
   Wrench,
-  User,
-  Filter
+  UserCheck,
+  Layers,
+  ChevronRight
 } from "lucide-react";
-import { RunRecord, ApprovalRequest, AppLanguage, ViewMode } from "../types";
+import { useAppStore } from "../store/useAppStore";
+import { RunRecord } from "../types";
 
-interface RunsPageProps {
-  runs: RunRecord[];
-  approvals: ApprovalRequest[];
-  onApproveRequest: (id: string) => void;
-  onRejectRequest: (id: string) => void;
-  lang: AppLanguage;
-  viewMode: ViewMode;
-}
-
-export const RunsPage: React.FC<RunsPageProps> = ({
-  runs,
-  approvals,
-  onApproveRequest,
-  onRejectRequest,
-  viewMode,
-}) => {
+export const RunsPage: React.FC = () => {
+  const { runs, approvals, approveRequest, rejectRequest, viewMode } = useAppStore();
   const [selectedRun, setSelectedRun] = useState<RunRecord | null>(runs[0] || null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const pendingApprovals = approvals.filter((a) => a.status === "pending");
+
+  const filteredRuns = runs.filter(
+    (r) =>
+      r.taskSummary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.agentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.user.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 bg-neutral-50 dark:bg-[#050505]">
@@ -44,10 +39,10 @@ export const RunsPage: React.FC<RunsPageProps> = ({
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-slate-100 flex items-center space-x-2.5">
             <Activity className="w-6 h-6 text-emerald-400" />
-            <span>运行与 Trace 追踪中心 (Run & Trace Hub)</span>
+            <span>运行与 Trace 完整时间线追踪中心 (Run & Trace Timeline Hub)</span>
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-slate-400 mt-1">
-            实时查看全平台 Agent 运行轨迹、Token 消耗、延迟与人工审批卡片。
+            下钻展现意图路由、RAG 向量切片召回、写接口拦截以及最终工具调用的完整时间线。
           </p>
         </div>
 
@@ -59,12 +54,12 @@ export const RunsPage: React.FC<RunsPageProps> = ({
         )}
       </div>
 
-      {/* Pending Approvals Section */}
+      {/* Pending Approvals Section Banner */}
       {pendingApprovals.length > 0 && (
         <div className="space-y-3">
           <h2 className="font-bold text-sm text-amber-400 flex items-center space-x-1.5 font-mono">
             <ShieldAlert className="w-4 h-4" />
-            <span>拦截到需写接口人工审批请求 (Human Approval Cards)</span>
+            <span>拦截到需写接口人工审批请求 (Human Approval Required)</span>
           </h2>
 
           {pendingApprovals.map((appr) => (
@@ -92,14 +87,14 @@ export const RunsPage: React.FC<RunsPageProps> = ({
 
               <div className="flex items-center justify-end space-x-3 pt-2">
                 <button
-                  onClick={() => onRejectRequest(appr.id)}
+                  onClick={() => rejectRequest(appr.id)}
                   className="px-4 py-1.5 rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 font-bold text-xs flex items-center space-x-1"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>拒绝此写接口请求</span>
                 </button>
                 <button
-                  onClick={() => onApproveRequest(appr.id)}
+                  onClick={() => approveRequest(appr.id)}
                   className="px-5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center space-x-1 shadow-md"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -111,24 +106,36 @@ export const RunsPage: React.FC<RunsPageProps> = ({
         </div>
       )}
 
+      {/* Filter Toolbar */}
+      <div className="relative max-w-md">
+        <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="搜索任务摘要或 Agent 名称..."
+          className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#121215] text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+        />
+      </div>
+
       {/* Runs Table & Detail Timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Runs List */}
         <div className="lg:col-span-1 space-y-3">
-          <h3 className="font-bold text-xs font-mono text-slate-300">历史 Run 记录 ({runs.length})</h3>
-          {runs.map((run) => (
+          <h3 className="font-bold text-xs font-mono text-slate-300">历史 Run 记录 ({filteredRuns.length})</h3>
+          {filteredRuns.map((run) => (
             <div
               key={run.id}
               onClick={() => setSelectedRun(run)}
               className={`p-4 rounded-xl border cursor-pointer space-y-2 transition-all ${
                 selectedRun?.id === run.id
-                  ? "border-emerald-500 bg-emerald-500/10 font-bold text-emerald-300"
+                  ? "border-emerald-500 bg-emerald-500/10 font-bold text-emerald-300 shadow-md"
                   : "border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0d0d10] text-slate-400 hover:border-white/20"
               }`}
             >
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-200 font-bold truncate">{run.agentName}</span>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">{run.status}</span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase">{run.status}</span>
               </div>
 
               <p className="text-xs text-slate-300 line-clamp-1">{run.taskSummary}</p>
@@ -141,9 +148,9 @@ export const RunsPage: React.FC<RunsPageProps> = ({
           ))}
         </div>
 
-        {/* Selected Run Trace Detail */}
+        {/* Selected Run Trace Detail & Full Timeline */}
         {selectedRun && (
-          <div className="lg:col-span-2 space-y-4 p-6 rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0c0c0e] shadow-xl">
+          <div className="lg:col-span-2 space-y-5 p-6 rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0c0c0e] shadow-xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-100">{selectedRun.taskSummary}</h3>
@@ -163,17 +170,19 @@ export const RunsPage: React.FC<RunsPageProps> = ({
             </div>
 
             {/* Trace Steps Timeline */}
-            <div className="space-y-3">
-              <h4 className="font-bold text-xs font-mono text-slate-300">Trace 全链路分步日志 (Steps)</h4>
-              <div className="relative pl-5 space-y-3 border-l-2 border-emerald-500/30">
-                {selectedRun.traceSteps.map((step) => (
-                  <div key={step.id} className="relative p-3 rounded-lg bg-neutral-900 border border-white/5 space-y-1">
-                    <div className="absolute -left-[27px] top-3 w-3 h-3 rounded-full bg-emerald-500" />
+            <div className="space-y-4">
+              <h4 className="font-bold text-xs font-mono text-slate-300">完整执行时间线 (Execution Step Timeline)</h4>
+              <div className="relative pl-6 space-y-4 border-l-2 border-emerald-500/30">
+                {selectedRun.traceSteps.map((step, idx) => (
+                  <div key={step.id || idx} className="relative p-4 rounded-xl bg-neutral-900 border border-white/10 space-y-1.5 shadow-xs">
+                    <div className="absolute -left-[31px] top-4 w-4 h-4 rounded-full bg-emerald-500 border-2 border-black flex items-center justify-center font-mono text-[9px] font-bold text-black">
+                      {idx + 1}
+                    </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-200">{step.stepName}</span>
-                      <span className="font-mono text-[10px] text-slate-400">{step.durationMs}ms</span>
+                      <span className="font-mono text-[10px] text-emerald-400 font-bold">{step.durationMs}ms</span>
                     </div>
-                    <p className="text-xs text-slate-400 font-mono">{step.detail}</p>
+                    <p className="text-xs text-slate-400 font-mono leading-relaxed">{step.detail}</p>
                   </div>
                 ))}
               </div>
